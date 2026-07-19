@@ -1,0 +1,42 @@
+<div class="terminal-container" (click)="focusInput()">
+  <div class="terminal-header">
+    <div class="terminal-buttons">
+      <span class="btn close"></span>
+      <span class="btn minimize"></span>
+      <span class="btn maximize"></span>
+    </div>
+    <div class="terminal-title">deniz@portfolio: ~/cli</div>
+  </div>
+  
+  <div class="terminal-body" #scrollContainer>
+    <div class="terminal-log">
+      @for (line of history(); track $index) {
+        <div class="log-line" [ngClass]="line.type">
+          @if (line.type === 'input') {
+            <span class="prompt">deniz&commat;portfolio:~$</span>
+            <span class="command-text">{{ line.text.substring(18) }}</span>
+          } @else {
+            <span class="output-text">{{ line.text }}</span>
+          }
+        </div>
+      }
+    </div>
+    
+    <div class="input-line">
+      <span class="prompt">deniz&commat;portfolio:~$</span>
+      <input 
+        #cmdInput
+        type="text" 
+        [ngModel]="inputValue()" 
+        (ngModelChange)="inputValue.set($event)"
+        (keydown)="handleKeyDown($event)"
+        autofocus 
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        class="cmd-input" />
+    </div>
+  </div>
+  <div class="scanlines"></div>
+</div>

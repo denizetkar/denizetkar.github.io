@@ -1,0 +1,152 @@
+.terminal-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: rgba(5, 5, 5, 0.95);
+  border: 1px solid var(--border-glass);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  font-family: var(--font-mono);
+  box-shadow: var(--panel-shadow);
+
+  &::before {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0; left: 0; bottom: 0; right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    z-index: 10;
+    background-size: 100% 4px, 6px 100%;
+    pointer-events: none;
+  }
+}
+
+.terminal-header {
+  display: flex;
+  align-items: center;
+  background: #141414;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  user-select: none;
+}
+
+.terminal-buttons {
+  display: flex;
+  gap: 8px;
+  margin-right: 16px;
+
+  .btn {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+
+    &.close { background: #ff5f56; }
+    &.minimize { background: #ffbd2e; }
+    &.maximize { background: #27c93f; }
+  }
+}
+
+.terminal-title {
+  color: #8c8c8c;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-align: center;
+  flex-grow: 1;
+  margin-right: 50px; // Balance offset for buttons
+}
+
+.terminal-body {
+  flex-grow: 1;
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: #dcdcdc;
+  scrollbar-width: thin;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+  }
+}
+
+.terminal-log {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.log-line {
+  white-space: pre-wrap;
+  word-break: break-all;
+
+  &.input {
+    color: var(--text-primary);
+  }
+
+  &.system {
+    color: var(--text-secondary);
+    opacity: 0.85;
+  }
+
+  &.output {
+    color: #e2e8f0;
+  }
+
+  &.success {
+    color: var(--accent);
+    text-shadow: 0 0 4px var(--accent-glow);
+  }
+
+  &.error {
+    color: var(--error);
+    text-shadow: 0 0 4px var(--error-glow);
+  }
+}
+
+.prompt {
+  color: var(--accent);
+  margin-right: 8px;
+  font-weight: bold;
+  text-shadow: 0 0 3px var(--accent-glow);
+}
+
+.command-text {
+  color: #fff;
+}
+
+.input-line {
+  display: flex;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.cmd-input {
+  flex-grow: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-family: inherit;
+  font-size: inherit;
+  caret-color: var(--accent);
+  padding: 0;
+  margin: 0;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+// Blinking caret effect inside input
+.cmd-input {
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
+}

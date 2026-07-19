@@ -1,0 +1,160 @@
+<div class="simulator-container glass-panel">
+  <div class="controls-panel">
+    <h3>Flight Control Panel</h3>
+    <p class="subtitle">Set flight parameters for Teknofest Rocket launch.</p>
+    
+    <div class="control-group">
+      <div class="label-row">
+        <label>Thrust Vector</label>
+        <span class="value">{{ thrust() }}%</span>
+      </div>
+      <input 
+        type="range" 
+        min="0" 
+        max="100" 
+        [disabled]="flightState() === 'launching'" 
+        [ngModel]="thrust()" 
+        (ngModelChange)="thrust.set($event)" 
+        class="slider" />
+      <span class="desc">Min 60% required for lift-off gravity escape.</span>
+    </div>
+
+    <div class="control-group">
+      <div class="label-row">
+        <label>Fuel Mixture (O2/RP-1)</label>
+        <span class="value">{{ fuelRatio() }}:{{ 100 - fuelRatio() }}</span>
+      </div>
+      <input 
+        type="range" 
+        min="0" 
+        max="100" 
+        [disabled]="flightState() === 'launching'" 
+        [ngModel]="fuelRatio()" 
+        (ngModelChange)="fuelRatio.set($event)" 
+        class="slider" />
+      <span class="desc">Requires stable 40%-60% mix to prevent cut-off.</span>
+    </div>
+
+    <div class="control-group">
+      <div class="label-row">
+        <label>Pitch Angle</label>
+        <span class="value">{{ pitchAngle() }}°</span>
+      </div>
+      <input 
+        type="range" 
+        min="50" 
+        max="120" 
+        [disabled]="flightState() === 'launching'" 
+        [ngModel]="pitchAngle()" 
+        (ngModelChange)="pitchAngle.set($event)" 
+        class="slider" />
+      <span class="desc">Optimal launch angle: 70° to 105°.</span>
+    </div>
+
+    <div class="action-buttons">
+      @if (flightState() === 'prelaunch') {
+        <button class="btn-launch glow-border" (click)="launchRocket()">
+          🚀 LIFT OFF
+        </button>
+      } @else if (flightState() === 'launching') {
+        <button class="btn-abort glow-border" disabled>
+          💥 ASCENDING...
+        </button>
+      } @else {
+        <button class="btn-reset" (click)="resetFlightSimulator()">
+          🔄 RESET SYSTEM
+        </button>
+      }
+      
+      <button 
+        class="btn-override" 
+        [disabled]="flightState() === 'launching'" 
+        (click)="triggerOverride()">
+        🔥 OVERRIDE SAFETY
+      </button>
+    </div>
+
+    <div class="cheat-keypad glow-border">
+      <div class="keypad-title">Calibrator Keypad</div>
+      <div class="keys-grid">
+        @for (num of ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']; track num) {
+          <button class="key-btn" (click)="keypressCheat(num)">{{ num }}</button>
+        }
+      </div>
+      <div class="hint">Hint: try '335' or '1337'</div>
+    </div>
+  </div>
+
+  <div class="flight-viz">
+    <div class="altimeter">
+      <div class="alt-label">ALTITUDE</div>
+      <div class="alt-value glow-text">{{ altitude() }}m</div>
+      
+      <div class="gauge-bar">
+        <div class="gauge-fill glow-box" [style.height.%]="(altitude() / 10000) * 100"></div>
+        <div class="gauge-milestones">
+          <span class="m-tick" style="bottom: 15%">1500m</span>
+          <span class="m-tick" style="bottom: 35%">3500m</span>
+          <span class="m-tick" style="bottom: 50%">5000m</span>
+          <span class="m-tick" style="bottom: 75%">7500m</span>
+          <span class="m-tick" style="bottom: 100%">10000m</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="scene-wrapper">
+      <div class="space-sky" [style.background-position-y.%]="(altitude() / 10000) * 100">
+        <!-- Celestial Bodies / Grid Lines -->
+        <div class="stars"></div>
+        
+        <!-- Active Rocket / Nyan / UFO Graphic -->
+        <div 
+          class="flying-object" 
+          [ngClass]="[flightState(), activeCheat()]"
+          [style.bottom.%]="(altitude() / 10000) * 80">
+          
+          @if (activeCheat() === 'nyancat') {
+            <div class="nyan-cat-sprite">🌈🐱</div>
+          } @else if (activeCheat() === 'ufo') {
+            <div class="ufo-sprite">🛸⚡</div>
+          } @else {
+            <div class="rocket-sprite">🚀
+              @if (flightState() === 'launching') {
+                <span class="flame">🔥</span>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="telemetry-dials">
+        <div class="dial">
+          <span class="label">VELOCITY</span>
+          <span class="val glow-text">{{ velocity() }} m/s</span>
+        </div>
+        <div class="dial">
+          <span class="label">FUEL</span>
+          <span class="val" [style.color]="fuelRemaining() < 20 ? 'var(--error)' : 'var(--text-primary)'">
+            {{ fuelRemaining() | number:'1.0-0' }}%
+          </span>
+        </div>
+        <div class="dial">
+          <span class="label">STATUS</span>
+          <span class="val" [ngClass]="flightState()">{{ flightState() | uppercase }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="telemetry-logs-panel glass-panel">
+    <h4>Telemetry Event Logs</h4>
+    <div class="logs-wrapper">
+      @for (log of logs().slice().reverse(); track $index) {
+        <div class="log-line" [ngClass]="log.type">
+          <span class="time">[{{ log.timestamp }}]</span>
+          <span class="message">{{ log.message }}</span>
+        </div>
+      }
+    </div>
+  </div>
+</div>

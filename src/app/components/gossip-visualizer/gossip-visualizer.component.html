@@ -1,0 +1,53 @@
+<div class="visualizer-container glass-panel">
+  <div class="visualizer-main">
+    <div class="canvas-header">
+      <div class="header-info">
+        <h3>Gossip Network Graph</h3>
+        <p>Interactive peer-to-peer gossip protocol simulation. Click nodes to spread data.</p>
+      </div>
+      <div class="header-stats">
+        <span class="badge glow-border">
+          CONVERGENCE: {{ ((infectionCount() / totalNodesCount()) * 100) | number:'1.0-0' }}%
+        </span>
+        <span class="badge">
+          NODES: {{ infectionCount() }} / {{ totalNodesCount() }}
+        </span>
+      </div>
+    </div>
+
+    <div class="canvas-wrapper">
+      <canvas #canvasElement (click)="handleCanvasClick($event)"></canvas>
+    </div>
+
+    <div class="canvas-footer">
+      <button class="control-btn glow-border" (click)="injectEpidemic()">
+        <span class="icon">📡</span> Spread Gossip
+      </button>
+      <button class="control-btn" (click)="resetSimulation()">
+        <span class="icon">🔄</span> Reset Mesh
+      </button>
+    </div>
+  </div>
+
+  <div class="visualizer-sidebar glass-panel">
+    @if (selectedNode(); as node) {
+      <div class="node-details">
+        <div class="category-tag" [attr.data-category]="node.category">
+          {{ node.category | uppercase }}
+        </div>
+        <h2 class="node-title glow-text">{{ node.title }}</h2>
+        
+        <div class="node-content">
+          @for (paragraph of node.body; track $index) {
+            <p>{{ paragraph }}</p>
+          }
+        </div>
+      </div>
+    } @else {
+      <div class="empty-state">
+        <span class="empty-icon">🖱️</span>
+        <p>Click any node in the gossip network to decrypt and display credentials.</p>
+      </div>
+    }
+  </div>
+</div>

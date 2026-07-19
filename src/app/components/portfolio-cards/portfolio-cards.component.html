@@ -1,0 +1,92 @@
+<div class="cards-container">
+  <!-- Profile Header Card -->
+  <header class="profile-header glass-panel">
+    <div class="avatar-glow">DE</div>
+    <div class="meta-info">
+      <h1 class="glow-text">{{ dataService.name() }}</h1>
+      <h2>{{ dataService.title() }}</h2>
+      <p class="company">{{ dataService.company() }} • {{ dataService.location() }}</p>
+      
+      <div class="links-dock">
+        <a [href]="'mailto:' + dataService.email()" class="link-item">
+          📧 Email
+        </a>
+        <a [href]="dataService.githubUrl()" target="_blank" rel="noopener" class="link-item">
+          💻 GitHub
+        </a>
+        <a [href]="dataService.linkedinUrl()" target="_blank" rel="noopener" class="link-item">
+          💼 LinkedIn
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Biography -->
+  <section class="bio-section glass-panel">
+    <h3>About Me</h3>
+    <p>{{ dataService.bio() }}</p>
+  </section>
+
+  <!-- Core Skill Matrices -->
+  <section class="skills-matrix glass-panel">
+    <h3>Technical Expertise Matrix</h3>
+    <div class="skills-grid">
+      @for (group of dataService.skills(); track group.category) {
+        <div class="skill-card glow-border">
+          <h5>{{ group.category }}</h5>
+          <div class="badges-row">
+            @for (skill of group.skills; track skill) {
+              <span class="badge">{{ skill }}</span>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- Projects Grid -->
+  <section class="projects-section">
+    <h3>Featured Repositories</h3>
+    <div class="projects-grid">
+      @for (project of dataService.projects(); track project.name) {
+        <div class="project-card glass-panel">
+          <div class="card-header">
+            <h4>{{ project.name }}</h4>
+            <a [href]="project.url" target="_blank" rel="noopener" class="repo-link">
+              ↗ Repo
+            </a>
+          </div>
+          <p class="description">{{ project.description }}</p>
+          
+          <div class="tech-row">
+            @for (t of project.tech; track t) {
+              <span class="tech-pill">{{ t }}</span>
+            }
+          </div>
+
+          <ul class="details-list">
+            @for (detail of project.details; track detail) {
+              <li>{{ detail }}</li>
+            }
+          </ul>
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- Education & Career Timeline -->
+  <section class="timeline-section glass-panel">
+    <h3>Career Milestones</h3>
+    <div class="timeline-track">
+      @for (milestone of dataService.timeline(); track milestone.year) {
+        <div class="timeline-node">
+          <div class="node-year glow-text">{{ milestone.year }}</div>
+          <div class="node-content glow-border">
+            <h5>{{ milestone.title }}</h5>
+            <p>{{ milestone.description }}</p>
+          </div>
+        </div>
+      }
+    </div>
+  </section>
+</div>

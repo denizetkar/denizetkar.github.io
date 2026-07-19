@@ -1,0 +1,95 @@
+<div class="radio-widget" [class.power-off]="!isPowered()">
+  <!-- Walkie-Talkie Antenna and Knobs -->
+  <div class="hardware-top">
+    <div class="antenna"></div>
+    <div class="dial-knob vol" [class.rotated]="isPowered()" (click)="togglePower()"></div>
+    <div class="dial-knob ch" [style.transform]="'rotate(' + (activeChannel() * 45) + 'deg)'"></div>
+  </div>
+
+  <div class="radio-body glow-border">
+    <!-- LCD Display Panel -->
+    <div class="lcd-screen glass-panel">
+      @if (isPowered()) {
+        <div class="battery-indicator">🔋 [III]</div>
+        <div class="frequency-row">
+          <span class="freq">2.4{{ activeChannel() }}0 GHz</span>
+          <span class="sig-bars">📶</span>
+        </div>
+        <div class="status-badge" [ngClass]="radioStatus()">
+          {{ radioStatus() | uppercase }}
+        </div>
+        <div class="screen-text" [class.static-lines]="staticActive()">
+          {{ receivedTransmission() }}
+        </div>
+      } @else {
+        <div class="screen-dead"></div>
+      }
+    </div>
+
+    <!-- Interface Details -->
+    <div class="controls-grid">
+      <div class="ch-grid">
+        <button class="ch-btn" [class.active]="activeChannel() === 1" (click)="setChannel(1)">CH 1</button>
+        <button class="ch-btn" [class.active]="activeChannel() === 2" (click)="setChannel(2)">CH 2</button>
+        <button class="ch-btn" [class.active]="activeChannel() === 3" (click)="setChannel(3)">CH 3</button>
+        <button class="ch-btn" [class.active]="activeChannel() === 4" (click)="setChannel(4)">CH 4</button>
+      </div>
+
+      <button class="btn-scan glow-border" (click)="scanBleDevices()">
+        🔍 SCAN BLE
+      </button>
+    </div>
+
+    <!-- Speaker Slits -->
+    <div class="speaker-grill">
+      <div class="grill-slit"></div>
+      <div class="grill-slit"></div>
+      <div class="grill-slit"></div>
+      <div class="grill-slit"></div>
+      <div class="grill-slit"></div>
+    </div>
+  </div>
+
+  <!-- PTT Trigger (Positions on left or below for layout) -->
+  <div class="ptt-holder">
+    <button 
+      class="ptt-btn" 
+      [class.pressed]="isPttHeld()"
+      [disabled]="!isPowered() || !connectedDevice()"
+      (mousedown)="startPtt()"
+      (mouseup)="stopPtt()"
+      (mouseleave)="stopPtt()"
+      (touchstart)="startPtt(); $event.preventDefault()"
+      (touchend)="stopPtt()">
+      🎙️ PTT (HOLD)
+    </button>
+  </div>
+
+  <!-- Device Discovery Drawer overlay -->
+  @if (isPowered() && (isScanning() || foundDevices().length > 0) && !connectedDevice()) {
+    <div class="discovery-panel glass-panel glow-border">
+      <h5>BLE Discovery Queue</h5>
+      
+      @if (isScanning()) {
+        <div class="scanning-loader">
+          <span class="pulse-circle"></span>
+          <p>Scanning BLE advertisements...</p>
+        </div>
+      } @else {
+        <div class="device-list">
+          @for (dev of foundDevices(); track dev.address) {
+            <div class="device-row" (click)="connectToDevice(dev)">
+              <div class="info">
+                <span class="name">{{ dev.name }}</span>
+                <span class="addr">{{ dev.address }}</span>
+              </div>
+              <span class="rssi" [style.color]="dev.rssi > -60 ? 'var(--accent)' : 'var(--text-muted)'">
+                {{ dev.rssi }} dBm
+              </span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

@@ -1,1 +1,191 @@
-/* You can add global styles to this file, and also import other style files */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+// Root variables for themes
+:root, html[data-theme="dark"] {
+  --bg-primary: #0a0f1d;
+  --bg-secondary: #131b2e;
+  --bg-tertiary: #1b2640;
+  --bg-glass: rgba(19, 27, 46, 0.7);
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent: #14b8a6; // Teal
+  --accent-rgb: 20, 184, 166;
+  --accent-glow: rgba(20, 184, 166, 0.25);
+  --error: #ef4444;
+  --error-glow: rgba(239, 68, 68, 0.2);
+  --font-sans: 'Outfit', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-display: 'Space Grotesk', sans-serif;
+  --panel-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --glow-intensity: 8px;
+}
+
+html[data-theme="cyberpunk"] {
+  --bg-primary: #0f051d;
+  --bg-secondary: #1a0b36;
+  --bg-tertiary: #271252;
+  --bg-glass: rgba(26, 11, 54, 0.65);
+  --border-glass: rgba(236, 72, 153, 0.25);
+  --text-primary: #fdf6ff;
+  --text-secondary: #d8b4fe;
+  --text-muted: #a78bfa;
+  --accent: #ec4899; // Neon Pink
+  --accent-rgb: 236, 72, 153;
+  --accent-glow: rgba(236, 72, 153, 0.4);
+  --error: #f43f5e;
+  --error-glow: rgba(244, 63, 94, 0.35);
+  --font-sans: 'Space Grotesk', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-display: 'Space Grotesk', sans-serif;
+  --panel-shadow: 0 8px 32px 0 rgba(236, 72, 153, 0.15);
+  --glow-intensity: 15px;
+}
+
+html[data-theme="terminal"] {
+  --bg-primary: #020202;
+  --bg-secondary: #080808;
+  --bg-tertiary: #101010;
+  --bg-glass: rgba(5, 5, 5, 0.9);
+  --border-glass: #39ff14; // Phosphor green
+  --text-primary: #39ff14;
+  --text-secondary: #32cd32;
+  --text-muted: #1e6f1e;
+  --accent: #39ff14;
+  --accent-rgb: 57, 255, 20;
+  --accent-glow: rgba(57, 255, 20, 0.3);
+  --error: #ff3333;
+  --error-glow: rgba(255, 51, 51, 0.3);
+  --font-sans: 'JetBrains Mono', monospace;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-display: 'JetBrains Mono', monospace;
+  --panel-shadow: 0 0 15px rgba(57, 255, 20, 0.1);
+  --glow-intensity: 5px;
+}
+
+// Global resets
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body, html {
+  height: 100%;
+  width: 100%;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+// Custom Scrollbar
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+  box-shadow: 0 0 var(--glow-intensity) var(--accent-glow);
+}
+
+// Glow effects utility
+.glow-text {
+  text-shadow: 0 0 var(--glow-intensity) var(--accent-glow);
+}
+
+.glow-border {
+  border: 1px solid var(--accent);
+  box-shadow: 0 0 var(--glow-intensity) var(--accent-glow);
+}
+
+.glow-box {
+  box-shadow: 0 0 var(--glow-intensity) var(--accent-glow);
+}
+
+.glass-panel {
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-glass);
+  border-radius: 12px;
+  box-shadow: var(--panel-shadow);
+}
+
+// Global button reset & design
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  outline: none;
+  color: inherit;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+  
+  &:hover {
+    color: var(--text-primary);
+    text-shadow: 0 0 var(--glow-intensity) var(--accent-glow);
+  }
+}
+
+// Keyframes for global animations
+@keyframes ripple {
+  0% {
+    transform: scale(0);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(3);
+    opacity: 0;
+  }
+}
+
+@keyframes glitch {
+  0% {
+    clip-path: inset(40% 0 61% 0);
+  }
+  20% {
+    clip-path: inset(92% 0 1% 0);
+  }
+  40% {
+    clip-path: inset(25% 0 58% 0);
+  }
+  60% {
+    clip-path: inset(76% 0 5% 0);
+  }
+  80% {
+    clip-path: inset(15% 0 80% 0);
+  }
+  100% {
+    clip-path: inset(80% 0 5% 0);
+  }
+}
+
+// Custom code-glow utility for code lines
+.code-glow {
+  font-family: var(--font-mono);
+  color: var(--accent);
+}

@@ -1,0 +1,143 @@
+<div class="router-container glass-panel">
+  <div class="router-dashboard">
+    <div class="router-controls">
+      <h3>DPDK Routing Engine</h3>
+      <p class="subtitle">Kernel-bypass L3 packet router (DPDK Core Simulator)</p>
+
+      <div class="telemetry-grid">
+        <div class="telemetry-box" [class.alarm]="alarmActive()">
+          <span class="label">DPDK Core Load</span>
+          <span class="value glow-text">{{ cpuLoad() }}%</span>
+          <div class="bar-bg">
+            <div class="bar-fill" [style.width.%]="cpuLoad()"></div>
+          </div>
+        </div>
+
+        <div class="telemetry-box">
+          <span class="label">Throughput</span>
+          <span class="value glow-text">{{ (packetRate() / 1000) | number:'1.1-2' }} Mpps</span>
+        </div>
+      </div>
+
+      <div class="control-actions">
+        <button class="btn-traffic glow-border" (click)="injectTraffic()">
+          ⚡ Inject Packets
+        </button>
+        <button class="btn-stop" (click)="stopTraffic()">
+          ⏹️ Stop Traffic
+        </button>
+        <button class="btn-reset" (click)="resetRouter()">
+          🔄 Factory Reset
+        </button>
+      </div>
+
+      <!-- Add Rule Form -->
+      <div class="rule-form glow-border">
+        <h4>Insert Forwarding Entry</h4>
+        
+        <div class="form-group">
+          <label>Target Subnet (CIDR)</label>
+          <select [ngModel]="newCidr()" (ngModelChange)="newCidr.set($event)">
+            <option value="10.20.0.0/24">10.20.0.0/24 (WAN Subnet)</option>
+            <option value="192.168.50.0/24">192.168.50.0/24 (DMZ Zone)</option>
+            <option value="172.30.0.0/16">172.30.0.0/16 (Cluster Local)</option>
+            <option value="127.0.0.1/32">127.0.0.1/32 (Local Ring-0)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Physical Port Link</label>
+          <select [disabled]="makeLoop()" [ngModel]="newPort()" (ngModelChange)="newPort.set($event)">
+            <option value="Port 1 (WAN)">Port 1 (WAN / Fibre Channel)</option>
+            <option value="Port 2 (LAN)">Port 2 (Gigabit Ethernet)</option>
+            <option value="Port 3 (DMZ)">Port 3 (Virtual Switch)</option>
+          </select>
+        </div>
+
+        <div class="form-group checkbox-group">
+          <input 
+            type="checkbox" 
+            id="makeLoopChk" 
+            [ngModel]="makeLoop()" 
+            (ngModelChange)="makeLoop.set($event)" />
+          <label for="makeLoopChk" class="loop-warning">
+            ⚠️ Enable Ring-0 Loopback routing (Cyclic routing)
+          </label>
+        </div>
+
+        <button class="btn-add" (click)="addRule()">
+          ➕ Add Routing Rule
+        </button>
+      </div>
+    </div>
+
+    <div class="rules-table-container glass-panel">
+      <h4>Active Forwarding Rules Table</h4>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Subnet CIDR</th>
+              <th>Next Hop Gateway</th>
+              <th>Outbound Interface</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (rule of rules(); track $index) {
+              <tr [class.loop-row]="rule.isLoop">
+                <td>{{ rule.cidr }}</td>
+                <td>{{ rule.gateway }}</td>
+                <td>{{ rule.port }}</td>
+                <td>
+                  <button class="delete-btn" (click)="removeRule($index)">❌</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="router-viz glass-panel">
+    <h4>Packet Queue Visualization</h4>
+    
+    <div class="ports-container">
+      <div class="port wan">
+        <span class="port-lbl">Port 1 (WAN)</span>
+        <span class="plug">🔌</span>
+      </div>
+      <div class="port lan">
+        <span class="port-lbl">Port 2 (LAN)</span>
+        <span class="plug">🔌</span>
+      </div>
+      <div class="port dmz">
+        <span class="port-lbl">Port 3 (DMZ)</span>
+        <span class="plug">🔌</span>
+      </div>
+    </div>
+
+    <div class="core-hub glow-border" [class.looping]="alarmActive()">
+      <div class="hub-title">DPDK CORE</div>
+      <div class="hub-desc">Packet Forwarding Hub</div>
+      
+      @if (alarmActive()) {
+        <div class="alarm-text glow-text">🔥 PACKET STORM DETECTED 🔥</div>
+      }
+    </div>
+
+    <!-- Animated Packets overlay -->
+    <div class="packets-track-layer">
+      @for (pkt of packets(); track pkt.id) {
+        <div 
+          class="packet-dot" 
+          [ngClass]="[pkt.status]"
+          [style.left.%]="pkt.status === 'looping' ? null : pkt.position"
+          [style.top.%]="pkt.status === 'looping' ? null : 50">
+          <span class="pkt-id">#{{ pkt.id }}</span>
+        </div>
+      }
+    </div>
+  </div>
+</div>
