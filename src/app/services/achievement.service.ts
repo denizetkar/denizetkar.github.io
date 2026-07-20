@@ -9,13 +9,6 @@ export interface Achievement {
   unlockCondition: string;
 }
 
-interface PersistedAchievement {
-  id: string;
-  unlocked: boolean;
-}
-
-const STORAGE_KEY = 'achievements';
-
 const INITIAL_ACHIEVEMENTS: Achievement[] = [
   {
     id: 'apogee-reached',
@@ -93,7 +86,7 @@ export class AchievementService {
   private readonly simState = inject(SimulationStateService);
 
   constructor() {
-    this.restore();
+    // Deliberately no restore() — every visitor starts with 0 achievements.
     this.applyCrossUnlocksFromState();
   }
 
@@ -113,7 +106,6 @@ export class AchievementService {
       return next;
     });
     if (didChange) {
-      this.persist();
       this.applyCrossUnlock(achievementId);
       this.checkMetaAchievement();
       if (unlockedAchievement !== null) {
@@ -189,7 +181,6 @@ export class AchievementService {
       this.recentlyUnlocked.set(updated);
       return next;
     });
-    this.persist();
   }
 
   private applyCrossUnlocksFromState(): void {
@@ -198,41 +189,5 @@ export class AchievementService {
         this.applyCrossUnlock(id);
       }
     }
-    if (this.isUnlocked('arg-solved')) {
-      // arg-solved is the meta — already persisted; nothing else to apply.
-    }
-  }
-
-  private restore(): void {
-    if (typeof localStorage === 'undefined') {
-      return;
-    }
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return;
-    }
-    try {
-      const parsed = JSON.parse(raw) as PersistedAchievement[];
-      if (!Array.isArray(parsed)) {
-        return;
-      }
-      const unlockedIds = new Set(parsed.filter((p) => p.unlocked).map((p) => p.id));
-      this.achievements.update((list) =>
-        list.map((a) => (unlockedIds.has(a.id) ? { ...a, unlocked: true } : a)),
-      );
-    } catch {
-      // Corrupt storage — ignore and keep defaults.
-    }
-  }
-
-  private persist(): void {
-    if (typeof localStorage === 'undefined') {
-      return;
-    }
-    const payload: PersistedAchievement[] = this.achievements().map((a) => ({
-      id: a.id,
-      unlocked: a.unlocked,
-    }));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   }
 }

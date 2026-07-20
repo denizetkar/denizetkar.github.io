@@ -22,13 +22,13 @@ describe('AchievementService', () => {
     expect(service.isUnlocked('apogee-reached')).toBe(true);
   });
 
-  it('localStorage round-trip: set, re-instantiate, verify persisted', () => {
+  it('achievements reset on re-instantiation (no localStorage persistence)', () => {
     service.unlock('gossip-converged');
-    // Re-inject: TestBed creates a new instance after reset
+    expect(service.isUnlocked('gossip-converged')).toBe(true);
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({});
     const reloaded = TestBed.inject(AchievementService);
-    expect(reloaded.isUnlocked('gossip-converged')).toBe(true);
+    expect(reloaded.isUnlocked('gossip-converged')).toBe(false);
   });
 
   it('getUnlocked() returns only unlocked achievements', () => {

@@ -107,31 +107,25 @@ describe('Cross-widget achievement integration', () => {
     });
   });
 
-  describe('cross-unlock re-application after restore', () => {
-    it('re-instantiating with persisted achievements re-applies cross-unlocks to simState', () => {
+  describe('achievements reset on re-instantiation', () => {
+    it('re-instantiating resets all achievements (no localStorage persistence)', () => {
       achievements.unlock('all-packets-routed');
       achievements.unlock('all-conversations-complete');
       achievements.unlock('hidden-command-found');
-      const eggBefore = simState.gossipEasterEgg();
-      const profileBefore = simState.rocketConfig().specialProfile;
-      const presetBefore = simState.dpdkPresetUnlocked();
-      expect(eggBefore).not.toBeNull();
-      expect(profileBefore).toBe('nyancat-achievement');
-      expect(presetBefore).toBe(true);
+      expect(achievements.isUnlocked('all-packets-routed')).toBe(true);
 
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({});
       const reloadedAchievements = TestBed.inject(AchievementService);
       const reloadedSimState = TestBed.inject(SimulationStateService);
 
-      expect(reloadedAchievements.isUnlocked('all-packets-routed')).toBe(true);
-      expect(reloadedAchievements.isUnlocked('all-conversations-complete')).toBe(true);
-      expect(reloadedAchievements.isUnlocked('hidden-command-found')).toBe(true);
+      expect(reloadedAchievements.isUnlocked('all-packets-routed')).toBe(false);
+      expect(reloadedAchievements.isUnlocked('all-conversations-complete')).toBe(false);
+      expect(reloadedAchievements.isUnlocked('hidden-command-found')).toBe(false);
 
-      // Cross-unlocks re-applied from restored state (no notification toast on restore).
-      expect(reloadedSimState.gossipEasterEgg()?.id).toBe('easter-egg');
-      expect(reloadedSimState.rocketConfig().specialProfile).toBe('nyancat-achievement');
-      expect(reloadedSimState.dpdkPresetUnlocked()).toBe(true);
+      expect(reloadedSimState.gossipEasterEgg()).toBeNull();
+      expect(reloadedSimState.rocketConfig().specialProfile).toBeUndefined();
+      expect(reloadedSimState.dpdkPresetUnlocked()).toBe(false);
       expect(reloadedAchievements.recentlyUnlocked()).toBeNull();
     });
   });
