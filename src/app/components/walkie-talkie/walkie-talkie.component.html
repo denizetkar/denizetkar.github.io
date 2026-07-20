@@ -1,4 +1,4 @@
-<div class="radio-widget" [class.power-off]="!isPowered()">
+<div class="walkie-talkie-root">
   <div class="objective-banner">
     <span class="objective-text">
       <span class="obj-tag">OBJECTIVE</span>
@@ -9,6 +9,7 @@
     </span>
   </div>
 
+  <div class="radio-widget" [class.power-off]="!isPowered()">
   <!-- Walkie-Talkie Antenna and Knobs -->
   <div class="hardware-top">
     <div class="antenna"></div>
@@ -151,4 +152,5 @@
       <button class="btn-scan glow-border" (click)="startDialogue()">HOLD PTT TO RECEIVE</button>
     </div>
   }
+</div>
 </div>
