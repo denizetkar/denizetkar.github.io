@@ -53,13 +53,81 @@ const USR_BIN_COMMANDS = [
 ];
 
 const MAN_PAGES: Record<string, string> = {
-  ls: 'LS(1)\n\nNAME\n    ls - list directory contents\n\nSYNOPSIS\n    ls [OPTION]... [FILE]...\n\nDESCRIPTION\n    List information about the FILEs (the current directory by default).\n    Options: -a (all), -l (long format).',
-  cd: 'CD(1)\n\nNAME\n    cd - change the shell working directory\n\nSYNOPSIS\n    cd [dir]\n\nDESCRIPTION\n    Change the current directory to DIR. With no DIR, go to $HOME.\n    Special: "cd -" returns to $OLDPWD, "cd ~" goes home.',
-  cat: 'CAT(1)\n\nNAME\n    cat - concatenate files and print on the standard output\n\nSYNOPSIS\n    cat [OPTION]... [FILE]...\n\nDESCRIPTION\n    Options: -n (number all output lines).',
+  help: 'HELP(1)\n\nNAME\n    help - show available commands or usage for one\n\nSYNOPSIS\n    help [command]\n\nDESCRIPTION\n    Without args, lists every available command. With a command name, shows its usage. --help prints a one-line summary.',
+  about: 'ABOUT(1)\n\nNAME\n    about - show profile summary\n\nSYNOPSIS\n    about\n\nDESCRIPTION\n    Prints name, title, location, and bio.',
+  skills: 'SKILLS(1)\n\nNAME\n    skills - show technical skill matrix\n\nSYNOPSIS\n    skills\n\nDESCRIPTION\n    Prints the categorized technical expertise matrix.',
+  projects: 'PROJECTS(1)\n\nNAME\n    projects - list repositories or show one\n\nSYNOPSIS\n    projects [name]\n\nDESCRIPTION\n    Without args, lists all repositories. With a name, shows architectural details for that project.',
+  contact: 'CONTACT(1)\n\nNAME\n    contact - show contact information\n\nSYNOPSIS\n    contact\n\nDESCRIPTION\n    Prints email, GitHub, and LinkedIn URLs.',
+  theme: 'THEME(1)\n\nNAME\n    theme - switch UI theme\n\nSYNOPSIS\n    theme <dark|cyberpunk|terminal>\n\nDESCRIPTION\n    Switches the active application theme.',
+  clear: 'CLEAR(1)\n\nNAME\n    clear - clear the terminal screen\n\nSYNOPSIS\n    clear\n\nDESCRIPTION\n    Clears the entire terminal history.',
+  reboot: 'REBOOT(1)\n\nNAME\n    reboot - restart the simulation\n\nSYNOPSIS\n    reboot\n\nDESCRIPTION\n    Resets all simulation state (rocket, routes, gossip, radio) and clears the terminal.',
+  sudo: 'SUDO(8)\n\nNAME\n    sudo - execute a command as another user\n\nSYNOPSIS\n    sudo [command]\n\nDESCRIPTION\n    Deniz is not in the sudoers file. This incident will be reported.',
+  ls: 'LS(1)\n\nNAME\n    ls - list directory contents\n\nSYNOPSIS\n    ls [OPTION]... [FILE]...\n\nDESCRIPTION\n    List information about the FILEs (the current directory by default).\n    Options: -a (all, including hidden), -l (long format), -la/-al (both).',
+  cd: 'CD(1)\n\nNAME\n    cd - change the shell working directory\n\nSYNOPSIS\n    cd [dir]\n\nDESCRIPTION\n    Change the current directory to DIR. With no DIR, go to $HOME.\n    Special: "cd -" returns to $OLDPWD, "cd ~" or "cd" goes home, ".." goes to parent.',
+  cat: 'CAT(1)\n\nNAME\n    cat - concatenate files and print on the standard output\n\nSYNOPSIS\n    cat [OPTION]... [FILE]...\n\nDESCRIPTION\n    Options: -n (number all output lines). Reads piped stdin if no file is given.',
+  tree: 'TREE(1)\n\nNAME\n    tree - list contents of directories in a tree-like format\n\nSYNOPSIS\n    tree [path]\n\nDESCRIPTION\n    Recursively prints the directory tree starting at path (default: cwd).',
+  find: 'FIND(1)\n\nNAME\n    find - search for files in a directory hierarchy\n\nSYNOPSIS\n    find [path] [-name PATTERN] [-type f|d]\n\nDESCRIPTION\n    Searches starting at path (default: cwd). -name matches by glob pattern, -type filters by f (file) or d (dir).',
   echo: 'ECHO(1)\n\nNAME\n    echo - display a line of text\n\nSYNOPSIS\n    echo [STRING]...\n\nDESCRIPTION\n    Print the STRINGs. Supports $VAR expansion.\n    Option: -n (do not output the trailing newline).',
-  pwd: 'PWD(1)\n\nNAME\n    pwd - print name of current/working directory\n\nSYNOPSIS\n    pwd',
-  grep: 'GREP(1)\n\nNAME\n    grep - print lines matching a pattern\n\nSYNOPSIS\n    grep PATTERN [FILE]',
-  find: 'FIND(1)\n\nNAME\n    find - search for files in a directory hierarchy\n\nSYNOPSIS\n    find [path] [-name PATTERN] [-type f|d]',
+  pwd: 'PWD(1)\n\nNAME\n    pwd - print name of current/working directory\n\nSYNOPSIS\n    pwd\n\nDESCRIPTION\n    Prints the absolute path of the current working directory.',
+  whoami: 'WHOAMI(1)\n\nNAME\n    whoami - print effective userid\n\nSYNOPSIS\n    whoami\n\nDESCRIPTION\n    Prints the current user name (deniz).',
+  hostname: 'HOSTNAME(1)\n\nNAME\n    hostname - show or set the system host name\n\nSYNOPSIS\n    hostname\n\nDESCRIPTION\n    Prints the system hostname (portfolio).',
+  date: 'DATE(1)\n\nNAME\n    date - print the system date and time\n\nSYNOPSIS\n    date\n\nDESCRIPTION\n    Prints the current UTC date and time.',
+  uname: 'UNAME(1)\n\nNAME\n    uname - print system information\n\nSYNOPSIS\n    uname [-a]\n\nDESCRIPTION\n    Prints system name. -a prints full kernel string.',
+  env: 'ENV(1)\n\nNAME\n    env - run a program in a modified environment\n\nSYNOPSIS\n    env\n\nDESCRIPTION\n    Prints the current environment variables (HOME, USER, PWD, SHELL, PATH, PS1).',
+  printenv: 'PRINTENV(1)\n\nNAME\n    printenv - print environment variables\n\nSYNOPSIS\n    printenv\n\nDESCRIPTION\n    Prints the current environment variables (alias for env).',
+  wc: 'WC(1)\n\nNAME\n    wc - print newline, word, and byte counts\n\nSYNOPSIS\n    wc [-l] [FILE]\n\nDESCRIPTION\n    Prints counts. -l prints line count only. Reads piped stdin if no file is given.',
+  head: 'HEAD(1)\n\nNAME\n    head - output the first part of files\n\nSYNOPSIS\n    head [-n N] [FILE]\n\nDESCRIPTION\n    Prints the first N lines (default 10). Reads piped stdin if no file is given.',
+  tail: 'TAIL(1)\n\nNAME\n    tail - output the last part of files\n\nSYNOPSIS\n    tail [-n N] [FILE]\n\nDESCRIPTION\n    Prints the last N lines (default 10). Reads piped stdin if no file is given.',
+  grep: 'GREP(1)\n\nNAME\n    grep - print lines matching a pattern\n\nSYNOPSIS\n    grep PATTERN [FILE]\n\nDESCRIPTION\n    Prints lines containing PATTERN. Reads piped stdin if no file is given.',
+  which: 'WHICH(1)\n\nNAME\n    which - locate a command\n\nSYNOPSIS\n    which COMMAND...\n\nDESCRIPTION\n    Locates commands in /usr/bin.',
+  man: 'MAN(1)\n\nNAME\n    man - an interface to system manuals\n\nSYNOPSIS\n    man COMMAND\n\nDESCRIPTION\n    Shows the manual page for COMMAND.',
+  history: 'HISTORY(1)\n\nNAME\n    history - display command history\n\nSYNOPSIS\n    history\n\nDESCRIPTION\n    Lists previously executed commands with 1-indexed numbers. Use !N to re-run command N, !! to re-run the last.',
+  launch: 'LAUNCH(1)\n\nNAME\n    launch - initiate rocket launch sequence\n\nSYNOPSIS\n    launch [--thrust N] [--fuel N] [--pitch N] [--stage N] [--code OMEGA-7]\n\nDESCRIPTION\n    Initiates a launch. --code OMEGA-7 engages the ARG flight profile.',
+  route: 'ROUTE(8)\n\nNAME\n    route - show / manipulate the IP routing table\n\nSYNOPSIS\n    route --add CIDR --gw IP --port N | --remove CIDR | --list | --inject [--count N]\n\nDESCRIPTION\n    Manages the simulation routing table.',
+  gossip: 'GOSSIP(8)\n\nNAME\n    gossip - gossip protocol control\n\nSYNOPSIS\n    gossip --infect | --partition NODE | --fail NODE | --mode push|pull|push-pull\n\nDESCRIPTION\n    Controls the gossip protocol simulation.',
+  radio: 'RADIO(8)\n\nNAME\n    radio - radio transceiver control\n\nSYNOPSIS\n    radio --tune FREQ | --channel N | --ptt\n\nDESCRIPTION\n    Controls the radio simulation: tune frequency, set channel, hold PTT.',
+  tab: 'TAB(1)\n\nNAME\n    tab - switch the active widget\n\nSYNOPSIS\n    tab <gossip|rocket|router|radio|portfolio>\n\nDESCRIPTION\n    Switches the visible widget in the simulation dashboard.',
+  achievement: 'ACHIEVEMENT(1)\n\nNAME\n    achievement - list unlocked achievements\n\nSYNOPSIS\n    achievement [--list]\n\nDESCRIPTION\n    Lists all achievements that have been unlocked.',
+  solve: 'SOLVE(1)\n\nNAME\n    solve - resolve the ARG\n\nSYNOPSIS\n    solve SIGMA-13\n\nDESCRIPTION\n    Resolves the ARG chain. Requires launch OMEGA-7, gossip partition, and convergence preconditions.',
+};
+
+const HELP_USAGE: Record<string, string> = {
+  help: 'Usage: help [command] - show this help or usage for one command',
+  about: 'Usage: about - show bio and role summary',
+  skills: 'Usage: skills - show technical skill matrix',
+  projects: 'Usage: projects [name] - list repositories or show one',
+  contact: 'Usage: contact - print email, LinkedIn, GitHub',
+  theme: 'Usage: theme <dark|cyberpunk|terminal> - switch theme',
+  clear: 'Usage: clear - clear the terminal screen',
+  reboot: 'Usage: reboot - restart the simulation',
+  sudo: 'Usage: sudo [command] - run as another user (deniz is not a sudoer)',
+  ls: 'Usage: ls [-a|-l|-la] [path...] - list directory contents',
+  cd: 'Usage: cd [-|~|..|path] - change working directory',
+  cat: 'Usage: cat [-n] file... - print file contents',
+  tree: 'Usage: tree [path] - print directory tree',
+  find: 'Usage: find [path] [-name PATTERN] [-type f|d] - search files',
+  echo: 'Usage: echo [-n] [text] - print text ($VAR expanded)',
+  pwd: 'Usage: pwd - print working directory',
+  whoami: 'Usage: whoami - print current user',
+  hostname: 'Usage: hostname - print system hostname',
+  date: 'Usage: date - print current UTC date',
+  uname: 'Usage: uname [-a] - print system info',
+  env: 'Usage: env - print environment variables',
+  printenv: 'Usage: printenv - alias for env',
+  wc: 'Usage: wc [-l] file - count lines/words/chars',
+  head: 'Usage: head [-n N] file - print first N lines (default 10)',
+  tail: 'Usage: tail [-n N] file - print last N lines (default 10)',
+  grep: 'Usage: grep PATTERN file - print matching lines',
+  which: 'Usage: which command... - locate commands in /usr/bin',
+  man: 'Usage: man command - show manual page',
+  history: 'Usage: history - list commands (use !N / !! to re-run)',
+  launch: 'Usage: launch [--thrust N] [--fuel N] [--pitch N] [--stage N] [--code OMEGA-7]',
+  route: 'Usage: route --add CIDR --gw IP --port N | --remove CIDR | --list | --inject',
+  gossip: 'Usage: gossip --infect | --partition NODE | --fail NODE | --mode push|pull|push-pull',
+  radio: 'Usage: radio --tune FREQ | --channel N | --ptt',
+  tab: 'Usage: tab <gossip|rocket|router|radio|portfolio>',
+  achievement: 'Usage: achievement --list - list unlocked achievements',
+  solve: 'Usage: solve SIGMA-13 - resolve the ARG',
 };
 
 export class CommandParser {
@@ -284,6 +352,28 @@ export class VirtualFileSystem {
     return { ok: true, output: target.content ?? '' };
   }
 
+  write(path: string, content: string, append: boolean): { ok: boolean; error?: string } {
+    const expanded = this.expandUser(path);
+    const absolute = this.normalize(expanded);
+    if (!absolute.startsWith('/tmp/') && absolute !== '/tmp') {
+      return { ok: false, error: `write: ${path}: only /tmp is writable` };
+    }
+    const parentPath = absolute.split('/').slice(0, -1).join('/') || '/';
+    const parent = this.resolve(parentPath);
+    if (!parent || parent.type !== 'dir' || !parent.children) {
+      return { ok: false, error: `write: ${path}: no such directory` };
+    }
+    const name = absolute.split('/').pop()!;
+    const existing = parent.children.find((c) => c.name === name);
+    if (existing) {
+      if (existing.type !== 'file') return { ok: false, error: `write: ${path}: is a directory` };
+      existing.content = append ? (existing.content ?? '') + content : content;
+    } else {
+      parent.children.push({ name, type: 'file', content });
+    }
+    return { ok: true };
+  }
+
   read(path: string): { ok: boolean; error?: string } {
     const target = this.resolve(path);
     if (!target) return { ok: false, error: `no such file or directory: ${path}` };
@@ -397,6 +487,10 @@ export class TerminalComponent implements AfterViewChecked {
   ]);
   protected historyIndex = -1;
 
+  private captureBuffer: string[] | null = null;
+  private pipedInput: string | null = null;
+  private hadError = false;
+
   ngAfterViewChecked() { this.scrollToBottom(); }
   protected focusInput() { this.cmdInput.nativeElement.focus(); }
   rebuildVfs(): void { this.vfs.rebuild(); }
@@ -451,11 +545,31 @@ export class TerminalComponent implements AfterViewChecked {
   }
 
   private autocompleteCommand() {
-    const input = this.inputValue().toLowerCase();
-    const commands = this.knownCommands();
-    const matches = commands.filter((c) => c.startsWith(input));
+    const input = this.inputValue();
+    const lastSpace = input.lastIndexOf(' ');
+    if (lastSpace === -1) {
+      const lower = input.toLowerCase();
+      const commands = this.knownCommands();
+      const matches = commands.filter((c) => c.startsWith(lower));
+      this.applyMatches('', matches, '');
+      return;
+    }
+    const prefix = input.slice(0, lastSpace + 1);
+    const token = input.slice(lastSpace + 1);
+    const slashIdx = token.lastIndexOf('/');
+    const dirPart = slashIdx >= 0 ? token.slice(0, slashIdx + 1) : '';
+    const namePart = slashIdx >= 0 ? token.slice(slashIdx + 1) : token;
+    const dirPath = dirPart.length > 0 ? dirPart : this.vfs.cwd();
+    const nodes = this.vfs.lsNodes(dirPath);
+    const matches = nodes
+      .map((n) => (n.type === 'dir' ? `${n.name}/` : n.name))
+      .filter((name) => name.startsWith(namePart));
+    this.applyMatches(prefix + dirPart, matches, '');
+  }
+
+  private applyMatches(prefix: string, matches: string[], suffix: string): void {
     if (matches.length === 1) {
-      this.inputValue.set(matches[0]);
+      this.inputValue.set(`${prefix}${matches[0]}${suffix}`);
     } else if (matches.length > 1) {
       this.history.update((h) => [
         ...h,
@@ -475,15 +589,138 @@ export class TerminalComponent implements AfterViewChecked {
     ];
   }
 
-  private print(lines: TerminalLine[]): void { this.history.update((h) => [...h, ...lines]); }
-  private printLine(text: string, type: TerminalLine['type'] = 'output'): void { this.print([{ text, type }]); }
+  private print(lines: TerminalLine[]): void {
+    if (this.captureBuffer !== null) {
+      for (const line of lines) this.captureBuffer.push(line.text);
+      return;
+    }
+    this.history.update((h) => [...h, ...lines]);
+  }
+
+  private printLine(text: string, type: TerminalLine['type'] = 'output'): void {
+    if (type === 'error') this.hadError = true;
+    this.print([{ text, type }]);
+  }
 
   protected executeCommand(cmdStr: string) {
-    this.history.update((h) => [...h, { text: '', type: 'input', prompt: this.promptString(), command: cmdStr }]);
-    this.simState.commandHistory.update((h) => [...h, cmdStr]);
+    const trimmed = cmdStr.trim();
+    const expanded = this.expandHistory(trimmed);
+    this.history.update((h) => [...h, { text: '', type: 'input', prompt: this.promptString(), command: expanded }]);
+    this.simState.commandHistory.update((h) => [...h, expanded]);
     this.historyIndex = -1;
     this.inputValue.set('');
-    const parsed = CommandParser.parse(cmdStr);
+    for (const chain of this.splitChains(expanded)) {
+      this.runChain(chain);
+    }
+  }
+
+  private expandHistory(input: string): string {
+    if (input === '!!') {
+      const hist = this.simState.commandHistory();
+      if (hist.length === 0) return input;
+      return hist[hist.length - 1];
+    }
+    const m = /^!(\d+)$/.exec(input);
+    if (m) {
+      const idx = Number(m[1]) - 1;
+      const hist = this.simState.commandHistory();
+      if (idx >= 0 && idx < hist.length) return hist[idx];
+    }
+    return input;
+  }
+
+  private splitChains(input: string): string[] {
+    return input.split(';').map((c) => c.trim()).filter((c) => c.length > 0);
+  }
+
+  private runChain(chain: string): void {
+    const parts = this.splitAndChain(chain);
+    for (const part of parts) {
+      if (part.op === '&&' && this.lastExitCode !== 0) break;
+      this.runCommand(part.cmd);
+    }
+  }
+
+  private lastExitCode = 0;
+
+  private splitAndChain(chain: string): { cmd: string; op: string }[] {
+    const tokens = chain.split('&&');
+    const results: { cmd: string; op: string }[] = [];
+    tokens.forEach((t, i) => {
+      const trimmed = t.trim();
+      if (trimmed.length > 0) results.push({ cmd: trimmed, op: i === 0 ? '' : '&&' });
+    });
+    return results;
+  }
+
+  private runCommand(cmdStr: string): void {
+    this.hadError = false;
+    const redirect = this.parseRedirect(cmdStr);
+    const cmdWithoutRedirect = redirect.cmd;
+    const stages = this.splitPipes(cmdWithoutRedirect);
+    let stdin: string | null = null;
+    for (let i = 0; i < stages.length; i++) {
+      const stage = stages[i].trim();
+      const isLast = i === stages.length - 1;
+      this.pipedInput = stdin;
+      if (isLast && redirect.target) {
+        this.captureBuffer = [];
+        this.executeStage(stage);
+        const captured = this.captureBuffer.join('\n');
+        this.captureBuffer = null;
+        const content = captured.length > 0 ? `${captured}\n` : '';
+        const w = this.vfs.write(redirect.target, content, redirect.append);
+        if (!w.ok) {
+          this.printLine(w.error!, 'error');
+        }
+      } else if (!isLast) {
+        this.captureBuffer = [];
+        this.executeStage(stage);
+        stdin = this.captureBuffer.join('\n');
+        this.captureBuffer = null;
+      } else {
+        this.executeStage(stage);
+      }
+      this.pipedInput = null;
+    }
+    this.lastExitCode = this.hadError ? 1 : 0;
+  }
+
+  private parseRedirect(cmdStr: string): { cmd: string; target: string | null; append: boolean } {
+    const appendMatch = /^(.*?)\s*>>\s*(\S+)\s*$/.exec(cmdStr);
+    if (appendMatch) return { cmd: appendMatch[1].trim(), target: appendMatch[2], append: true };
+    const overMatch = /^(.*?)\s*>\s*(\S+)\s*$/.exec(cmdStr);
+    if (overMatch) return { cmd: overMatch[1].trim(), target: overMatch[2], append: false };
+    return { cmd: cmdStr, target: null, append: false };
+  }
+
+  private splitPipes(cmdStr: string): string[] {
+    const result: string[] = [];
+    let current = '';
+    let inSingle = false;
+    let inDouble = false;
+    for (let i = 0; i < cmdStr.length; i++) {
+      const ch = cmdStr[i];
+      if (ch === "'" && !inDouble) inSingle = !inSingle;
+      else if (ch === '"' && !inSingle) inDouble = !inDouble;
+      else if (ch === '|' && !inSingle && !inDouble) {
+        result.push(current);
+        current = '';
+        continue;
+      }
+      current += ch;
+    }
+    result.push(current);
+    return result;
+  }
+
+  private executeStage(stageStr: string): void {
+    const parsed = CommandParser.parse(stageStr);
+    if (parsed.command === '' ) return;
+    if (parsed.flags['help'] === true && parsed.command !== 'help') {
+      const usage = HELP_USAGE[parsed.command];
+      if (usage) { this.printLine(usage); return; }
+    }
     this.dispatch(parsed);
   }
 
@@ -669,7 +906,23 @@ export class TerminalComponent implements AfterViewChecked {
   }
 
   private cmdCat(flags: Record<string, string | boolean>, args: string[]): void {
-    if (args.length === 0) { this.printLine('cat: missing file operand', 'error'); return; }
+    if (args.length === 0) {
+      if (this.pipedInput !== null) {
+        const content = this.pipedInput;
+        const showNum = flags['n'] === true;
+        if (showNum) {
+          const lines = content.split('\n');
+          for (let i = 0; i < lines.length; i++) {
+            this.printLine(`${String(i + 1).padStart(6)}\t${lines[i]}`);
+          }
+        } else {
+          this.printLine(content);
+        }
+        return;
+      }
+      this.printLine('cat: missing file operand', 'error');
+      return;
+    }
     const showNum = flags['n'] === true;
     let triggeredSecret = false;
     for (const path of args) {
@@ -761,20 +1014,30 @@ export class TerminalComponent implements AfterViewChecked {
   }
 
   private cmdWc(flags: Record<string, string | boolean>, args: string[]): void {
-    const file = args[0];
-    if (!file) { this.printLine('wc: missing file operand', 'error'); return; }
-    const guard = this.vfs.read(file);
-    if (!guard.ok) { this.printLine(`wc: ${file}: ${guard.error}`, 'error'); return; }
-    const r = this.vfs.cat(file);
-    if (!r.ok) { this.printLine(`wc: ${file}: ${r.error}`, 'error'); return; }
-    const content = r.output ?? '';
+    let content: string;
+    let fileLabel = '';
+    if (args.length === 0 || (args.length === 1 && this.pipedInput !== null)) {
+      if (this.pipedInput === null) {
+        this.printLine('wc: missing file operand', 'error');
+        return;
+      }
+      content = this.pipedInput;
+    } else {
+      const file = args[0];
+      fileLabel = ` ${file}`;
+      const guard = this.vfs.read(file);
+      if (!guard.ok) { this.printLine(`wc: ${file}: ${guard.error}`, 'error'); return; }
+      const r = this.vfs.cat(file);
+      if (!r.ok) { this.printLine(`wc: ${file}: ${r.error}`, 'error'); return; }
+      content = r.output ?? '';
+    }
     const lines = content === '' ? 0 : content.split('\n').length;
     const words = content.trim().split(/\s+/).filter((w) => w.length > 0).length;
     const chars = content.length;
     if (flags['l'] === true) {
-      this.printLine(`${lines} ${file}`);
+      this.printLine(`${lines}${fileLabel}`);
     } else {
-      this.printLine(`${lines} ${words} ${chars} ${file}`);
+      this.printLine(`${lines} ${words} ${chars}${fileLabel}`);
     }
   }
 
@@ -792,12 +1055,18 @@ export class TerminalComponent implements AfterViewChecked {
     } else {
       file = args.find((a) => !a.startsWith('-'));
     }
-    if (!file) { this.printLine('head: missing file operand', 'error'); return; }
-    const guard = this.vfs.read(file);
-    if (!guard.ok) { this.printLine(`head: cannot open '${file}' for reading: ${guard.error}`, 'error'); return; }
-    const r = this.vfs.cat(file);
-    if (!r.ok) { this.printLine(`head: ${file}: ${r.error}`, 'error'); return; }
-    const lines = (r.output ?? '').split('\n');
+    let content: string;
+    if (!file) {
+      if (this.pipedInput === null) { this.printLine('head: missing file operand', 'error'); return; }
+      content = this.pipedInput;
+    } else {
+      const guard = this.vfs.read(file);
+      if (!guard.ok) { this.printLine(`head: cannot open '${file}' for reading: ${guard.error}`, 'error'); return; }
+      const r = this.vfs.cat(file);
+      if (!r.ok) { this.printLine(`head: ${file}: ${r.error}`, 'error'); return; }
+      content = r.output ?? '';
+    }
+    const lines = content.split('\n');
     this.printLine(lines.slice(0, n).join('\n'));
   }
 
@@ -815,25 +1084,37 @@ export class TerminalComponent implements AfterViewChecked {
     } else {
       file = args.find((a) => !a.startsWith('-'));
     }
-    if (!file) { this.printLine('tail: missing file operand', 'error'); return; }
-    const guard = this.vfs.read(file);
-    if (!guard.ok) { this.printLine(`tail: cannot open '${file}' for reading: ${guard.error}`, 'error'); return; }
-    const r = this.vfs.cat(file);
-    if (!r.ok) { this.printLine(`tail: ${file}: ${r.error}`, 'error'); return; }
-    const lines = (r.output ?? '').split('\n');
+    let content: string;
+    if (!file) {
+      if (this.pipedInput === null) { this.printLine('tail: missing file operand', 'error'); return; }
+      content = this.pipedInput;
+    } else {
+      const guard = this.vfs.read(file);
+      if (!guard.ok) { this.printLine(`tail: cannot open '${file}' for reading: ${guard.error}`, 'error'); return; }
+      const r = this.vfs.cat(file);
+      if (!r.ok) { this.printLine(`tail: ${file}: ${r.error}`, 'error'); return; }
+      content = r.output ?? '';
+    }
+    const lines = content.split('\n');
     this.printLine(lines.slice(-n).join('\n'));
   }
 
   private cmdGrep(args: string[]): void {
     const pattern = args[0];
-    const file = args[1];
     if (!pattern) { this.printLine('grep: missing pattern', 'error'); return; }
-    if (!file) { this.printLine('grep: missing file operand', 'error'); return; }
-    const guard = this.vfs.read(file);
-    if (!guard.ok) { this.printLine(`grep: ${file}: ${guard.error}`, 'error'); return; }
-    const r = this.vfs.cat(file);
-    if (!r.ok) { this.printLine(`grep: ${file}: ${r.error}`, 'error'); return; }
-    const lines = (r.output ?? '').split('\n').filter((l) => l.includes(pattern));
+    let content: string;
+    const file = args[1];
+    if (!file) {
+      if (this.pipedInput === null) { this.printLine('grep: missing file operand', 'error'); return; }
+      content = this.pipedInput;
+    } else {
+      const guard = this.vfs.read(file);
+      if (!guard.ok) { this.printLine(`grep: ${file}: ${guard.error}`, 'error'); return; }
+      const r = this.vfs.cat(file);
+      if (!r.ok) { this.printLine(`grep: ${file}: ${r.error}`, 'error'); return; }
+      content = r.output ?? '';
+    }
+    const lines = content.split('\n').filter((l) => l.includes(pattern));
     if (lines.length === 0) { this.printLine('', 'system'); return; }
     this.printLine(lines.join('\n'));
   }

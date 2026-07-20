@@ -570,4 +570,282 @@ describe('TerminalComponent', () => {
     const inputLine = [...h.history()].reverse().find((l: TerminalLine) => l.type === 'input');
     expect(inputLine?.prompt).toContain(':~$');
   });
+
+  describe('tab completion', () => {
+    const pressTab = (h: TerminalHandle) =>
+      h.handleKeyDown(new KeyboardEvent('keydown', { key: 'Tab' }));
+
+    it('completes a single matching command', () => {
+      const h = component as unknown as TerminalHandle;
+      h.inputValue.set('pw');
+      pressTab(h);
+      expect(h.inputValue()).toBe('pwd');
+    });
+
+    it('lists multiple matches without completing (bash-style)', () => {
+      const h = component as unknown as TerminalHandle;
+      run('clear');
+      h.inputValue.set('c');
+      pressTab(h);
+      const joined = h.history().map((l: TerminalLine) => l.text).join('\n');
+      expect(joined).toContain('cd');
+      expect(joined).toContain('cat');
+      expect(joined).toContain('clear');
+      expect(h.inputValue()).toBe('c');
+    });
+
+    it('shows nothing and does not complete when no match exists', () => {
+      const h = component as unknown as TerminalHandle;
+      run('clear');
+      h.inputValue.set('zzz');
+      pressTab(h);
+      expect(h.inputValue()).toBe('zzz');
+      expect(h.history().filter((l) => l.type === 'system').length).toBe(0);
+    });
+
+    it('completes a unique path in the current directory', () => {
+      const h = component as unknown as TerminalHandle;
+      run('cd /etc');
+      h.inputValue.set('cat host');
+      pressTab(h);
+      expect(h.inputValue()).toBe('cat hostname');
+    });
+
+    it('adds a trailing slash when completing a directory', () => {
+      const h = component as unknown as TerminalHandle;
+      run('cd /');
+      h.inputValue.set('ls ho');
+      pressTab(h);
+      expect(h.inputValue()).toBe('ls home/');
+    });
+  });
+
+  describe('pipes', () => {
+    it('cat resume.txt | grep TNG prints only matching lines', () => {
+      const lines = run('cat /home/deniz/resume.txt | grep TNG');
+      const joined = lines.map((l: TerminalLine) => l.text).join('\n');
+      expect(joined).toContain('TNG');
+      expect(joined).not.toContain('whoami');
+    });
+
+    it('ls | wc -l counts the entries in the directory', () => {
+      const lines = run('ls /etc | wc -l');
+      const wcLine = lines.find((l: TerminalLine) => /^\d+$/.test(l.text.trim()) || /^\d+\s*$/.test(l.text));
+      expect(wcLine).toBeDefined();
+      const n = Number(wcLine?.text.trim());
+      expect(Number.isFinite(n)).toBe(true);
+      expect(n).toBeGreaterThan(0);
+    });
+
+    it('echo text | grep token filters the piped input', () => {
+      const lines = run('echo "alpha beta" | grep beta');
+      const joined = lines.map((l: TerminalLine) => l.text).join('\n');
+      expect(joined).toContain('beta');
+      expect(joined).toContain('alpha');
+    });
+
+    it('grep on piped multi-line input keeps only matching lines', () => {
+      run('clear');
+      run('echo "line one match" > /tmp/pipe1.txt');
+      run('echo "line two" >> /tmp/pipe1.txt');
+      run('echo "line three match" >> /tmp/pipe1.txt');
+      const lines = run('cat /tmp/pipe1.txt | grep match');
+      const joined = lines.map((l: TerminalLine) => l.text).join('\n');
+      expect(joined).toContain('line one match');
+      expect(joined).toContain('line three match');
+      expect(joined).not.toContain('line two');
+    });
+
+    it('head reads piped stdin when no file is given', () => {
+      const lines = run('echo "one two three" | head -n 1');
+      const joined = lines.map((l: TerminalLine) => l.text).join('\n');
+      expect(joined).toContain('one two three');
+    });
+
+    it('cat reads piped stdin when no file is given', () => {
+      const lines = run('echo "piped hello" | cat');
+      const joined = lines.map((l: TerminalLine) => l.text).join('\n');
+      expect(joined).toContain('piped hello');
+    });
+  });
+
+  describe('redirects', () => {
+    it('echo "test" > /tmp/test.txt writes to a VFS file', () => {
+      run('clear');
+      run('echo "test" > /tmp/test.txt');
+      const lines = run('cat /tmp/test.txt');
+      const joined = lines.map((l: TerminalLine) => l.text).join('\n');
+      expect(joined).toContain('test');
+    });
+
+    it('echo "world" >> /tmp/test.txt appends to the file', () => {
+      run('clear');
+      run('echo "first" > /tmp/append.txt');
+      run('echo "second" >> /tmp/append.txt');
+      const lines = run('cat /tmp/append.txt');
+      const joined = lines.map((l: TerminalLine) => l.text).join('\n');
+      expect(joined).toContain('first');
+      expect(joined).toContain('second');
+    });
+
+    it('refuses to write outside /tmp', () => {
+      const lines = run('echo "nope" > /etc/host');
+      const joined = lines.map((l: TerminalLine) => l.text).join('\n');
+      expect(joined.toLowerCase()).toContain('only /tmp');
+    });
+
+    it('overwrites on the second single-redirect', () => {
+      run('clear');
+      run('echo "v1" > /tmp/ow.txt');
+      run('echo "v2" > /tmp/ow.txt');
+      const lines = run('cat /tmp/ow.txt');
+      const joined = lines.map((l: TerminalLine) => l.text).join('\n');
+      expect(joined).toContain('v2');
+      expect(joined).not.toContain('v1');
+    });
+  });
+
+  describe('command chaining', () => {
+    it('cd /tmp && ls runs the second command when the first succeeds', () => {
+      const lines = run('cd /tmp && pwd');
+      const pwdLine = lines.filter((l: TerminalLine) => l.type === 'output').pop();
+      expect(pwdLine?.text).toBe('/tmp');
+    });
+
+    it('&& stops the chain when the first command fails', () => {
+      run('clear');
+      const lines = run('cat /no/such/file && echo "should-not-print"');
+      const joined = lines.map((l: TerminalLine) => l.text).join('\n');
+      expect(joined).toContain('no such file');
+      expect(joined).not.toContain('should-not-print');
+    });
+
+    it('; always runs the next command even after a failure', () => {
+      run('clear');
+      const lines = run('cat /no/such/file ; echo "should-print"');
+      const joined = lines.map((l: TerminalLine) => l.text).join('\n');
+      expect(joined).toContain('no such file');
+      expect(joined).toContain('should-print');
+    });
+
+    it('multiple ; chains all execute', () => {
+      run('clear');
+      const lines = run('echo a ; echo b ; echo c');
+      const outputs = lines.filter((l: TerminalLine) => l.type === 'output').map((l) => l.text);
+      expect(outputs).toContain('a');
+      expect(outputs).toContain('b');
+      expect(outputs).toContain('c');
+    });
+  });
+
+  describe('man pages and --help', () => {
+    it('man ls prints the LS(1) page', () => {
+      const lines = run('man ls');
+      const joined = lines.map((l: TerminalLine) => l.text).join('\n');
+      expect(joined).toContain('LS(1)');
+      expect(joined).toContain('list directory contents');
+    });
+
+    it('man cat covers the CAT(1) page', () => {
+      const lines = run('man cat');
+      const joined = lines.map((l: TerminalLine) => l.text).join('\n');
+      expect(joined).toContain('CAT(1)');
+    });
+
+    it('man history documents !N and !!', () => {
+      const lines = run('man history');
+      const joined = lines.map((l: TerminalLine) => l.text).join('\n');
+      expect(joined).toContain('HISTORY(1)');
+      expect(joined).toContain('!!');
+      expect(joined).toContain('!N');
+    });
+
+    it('man solve documents the ARG chain', () => {
+      const lines = run('man solve');
+      const joined = lines.map((l: TerminalLine) => l.text).join('\n');
+      expect(joined).toContain('SOLVE(1)');
+      expect(joined).toContain('SIGMA-13');
+    });
+
+    it('man for an unknown command reports no manual entry', () => {
+      const lines = run('man nosuchcmd');
+      const joined = lines.map((l: TerminalLine) => l.text).join('\n');
+      expect(joined.toLowerCase()).toContain('no manual entry');
+    });
+
+    it('every known command has a man page entry', () => {
+      const known = [
+        'help', 'about', 'skills', 'projects', 'contact', 'theme', 'clear', 'reboot', 'sudo',
+        'ls', 'cd', 'cat', 'tree', 'find', 'echo', 'pwd', 'whoami', 'hostname', 'date',
+        'uname', 'env', 'printenv', 'wc', 'head', 'tail', 'grep', 'which', 'man', 'history',
+        'launch', 'route', 'gossip', 'radio', 'tab', 'achievement', 'solve',
+      ];
+      const missing: string[] = [];
+      for (const cmd of known) {
+        run('clear');
+        const out = run(`man ${cmd}`);
+        const joined = out.map((l: TerminalLine) => l.text).join('\n');
+        if (joined.includes('No manual entry')) missing.push(cmd);
+      }
+      expect(missing).toEqual([]);
+    });
+
+    it('ls --help prints a one-line usage summary', () => {
+      const lines = run('ls --help');
+      const joined = lines.map((l: TerminalLine) => l.text).join('\n');
+      expect(joined).toContain('Usage: ls');
+    });
+
+    it('grep --help prints a one-line usage summary', () => {
+      const lines = run('grep --help');
+      const joined = lines.map((l: TerminalLine) => l.text).join('\n');
+      expect(joined).toContain('Usage: grep');
+    });
+
+    it('echo --help prints a one-line usage summary', () => {
+      const lines = run('echo --help');
+      const joined = lines.map((l: TerminalLine) => l.text).join('\n');
+      expect(joined).toContain('Usage: echo');
+    });
+  });
+
+  describe('history replay', () => {
+    it('history output is numbered 1-indexed', () => {
+      run('clear');
+      run('pwd');
+      run('whoami');
+      const lines = run('history');
+      const numbered = lines.filter((l: TerminalLine) => /^\s*\d+\s+/.test(l.text));
+      expect(numbered.length).toBeGreaterThan(0);
+      const firstNum = Number(numbered[0]?.text.trim().split(/\s+/)[0]);
+      expect(firstNum).toBe(1);
+    });
+
+    it('!2 re-executes the second command from history', () => {
+      run('clear');
+      run('echo first-command');
+      run('echo second');
+      const lines = run('!2');
+      const joined = lines.map((l: TerminalLine) => l.text).join('\n');
+      const inputLines = lines.filter((l) => l.type === 'input').map((l) => l.command ?? '');
+      expect(inputLines.some((c) => c.includes('echo first-command'))).toBe(true);
+      expect(joined).toContain('first-command');
+    });
+
+    it('!! re-executes the last command from history', () => {
+      run('clear');
+      run('echo last-line');
+      const lines = run('!!');
+      const joined = lines.map((l: TerminalLine) => l.text).join('\n');
+      expect(joined).toContain('last-line');
+    });
+
+    it('!! echoes the expanded command before running it', () => {
+      run('clear');
+      run('echo expanded');
+      const lines = run('!!');
+      const inputLine = lines.find((l: TerminalLine) => l.type === 'input');
+      expect(inputLine?.command).toBe('echo expanded');
+    });
+  });
 });
