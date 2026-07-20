@@ -129,7 +129,7 @@
       @for (pkt of packets(); track pkt.id) {
         <div
           class="packet-dot"
-          [ngClass]="[pkt.status]"
+          [ngClass]="[pkt.status === 'routed' ? 'routed-exit' : pkt.status]"
           [style.left.%]="pkt.status === 'looping' ? null : pkt.position"
           [style.top.%]="pkt.status === 'looping' ? null : 50">
           <span class="pkt-id">#{{ pkt.id }}</span>

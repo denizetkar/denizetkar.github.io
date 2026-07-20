@@ -380,14 +380,21 @@
   justify-content: center;
   box-shadow: 0 0 6px rgba(245, 158, 11, 0.5);
   transform: translate(-50%, -50%);
-  
+  transition: left 0.18s linear, top 0.18s linear;
+  z-index: 4;
+
   .pkt-id {
     font-size: 0.45rem;
     color: #000;
     font-weight: 700;
   }
 
-  &.routed {
+  // Packets still traversing the pipeline are driven by their [style.left.%]
+  // binding from pkt.position. Do NOT animate `left`/`top` here or every
+  // in-flight packet snaps to the same keyframe end-value and stacks on
+  // top of each other (the "only 1 packet visible" bug).
+
+  &.routed-exit {
     animation: flow-to-ports 0.6s linear forwards;
   }
 

@@ -6,7 +6,7 @@ import { AchievementService } from '../../services/achievement.service';
 
 export interface RoutablePacket {
   id: string; dstIp: string; currentHop: string; ttl: number; port: string;
-  status: 'routed' | 'looping' | 'dropped'; position: number; visitedHops: string[];
+  status: 'in_flight' | 'routed' | 'looping' | 'dropped'; position: number; visitedHops: string[];
 }
 
 export class RoutingEngine {
@@ -138,7 +138,7 @@ export class DpdkRouterComponent implements OnDestroy {
     this.packetIdCounter++;
     this.packets.update((prev) => [...prev, {
       id: `pkt-${this.packetIdCounter}`, dstIp, currentHop: dstIp, ttl: INITIAL_TTL,
-      port: 'RX', status: 'routed', position: 0, visitedHops: [],
+      port: 'RX', status: 'in_flight', position: 0, visitedHops: [],
     }]);
   }
 
@@ -175,7 +175,7 @@ export class DpdkRouterComponent implements OnDestroy {
       const nextPosition = pkt.position + 15;
       if (nextPosition >= 100) { routed.push({ ...pkt, position: 100, status: 'routed' }); continue; }
       stillInFlight.push({ ...pkt, ttl: decremented.ttl, currentHop: match.nextHop,
-        port: match.interface, status: 'routed', position: nextPosition,
+        port: match.interface, status: 'in_flight', position: nextPosition,
         visitedHops: [...pkt.visitedHops, match.nextHop] });
     }
 
