@@ -146,10 +146,11 @@
         </div>
       }
     </div>
-  } @else if (isPowered() && simState.connectedFrequency() && isClear()) {
-    <div class="discovery-panel glass-panel glow-border">
+  } @else if (isPowered() && simState.connectedFrequency() && isClear() && !isCurrentChannelCompleted()) {
+    <div class="discovery-panel glass-panel glow-border dismissible">
       <h5>{{ simState.connectedFrequency() }} — SIGNAL LOCKED</h5>
       <button class="btn-scan glow-border" (click)="startDialogue()">HOLD PTT TO RECEIVE</button>
+      <button class="btn-dismiss" (click)="dismissSignalPanel()">✕</button>
     </div>
   }
 </div>

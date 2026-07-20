@@ -87,7 +87,12 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.02em;
 }
 
-// Custom Scrollbar
+// Custom Scrollbar (global — applies to all scrollable elements)
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--bg-tertiary) var(--bg-primary);
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

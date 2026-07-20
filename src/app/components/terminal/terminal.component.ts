@@ -615,7 +615,20 @@ export class TerminalComponent implements AfterViewChecked {
 
   private cmdSolve(token?: string): void {
     if (token !== 'SIGMA-13') { this.printLine('solve: unknown token. Hint: try SIGMA-13.', 'error'); return; }
-    if (!this.simState.gossipArgSolved()) { this.printLine('solve: preconditions not met. Resolve the gossip ARG first.', 'error'); return; }
+    if (!this.simState.gossipArgSolved()) {
+      this.print([
+        { text: 'solve: preconditions not met. The ARG chain is incomplete.', type: 'error' },
+        { text: '', type: 'output' },
+        { text: 'The full chain requires:', type: 'system' },
+        { text: '  1. launch --code OMEGA-7   (sets ARG flight profile)', type: 'output' },
+        { text: '  2. gossip --partition A-B,B-C,C-D  (severs the ARG partition)', type: 'output' },
+        { text: '  3. Achieve gossip convergence with the partition active', type: 'output' },
+        { text: '  4. solve SIGMA-13          (this command)', type: 'output' },
+        { text: '', type: 'output' },
+        { text: 'Hint: read /home/deniz/.secrets/launch-codes.txt for details.', type: 'system' },
+      ]);
+      return;
+    }
     this.achievements.unlock('arg-solved');
     this.simState.argCompleted.set(true);
     this.print([

@@ -219,6 +219,7 @@ export class WalkieTalkieComponent implements OnDestroy {
   protected readonly completedChannels = signal<Set<Channel['id']>>(new Set());
   protected readonly scanResults = signal<readonly Channel[]>([]);
   protected readonly pttFeedback = signal<string>('');
+  protected readonly signalPanelDismissed = signal<Set<string>>(new Set());
 
   // Active dialogue
   private readonly _currentNodeId = signal<string | null>(null);
@@ -287,6 +288,19 @@ export class WalkieTalkieComponent implements OnDestroy {
     return this.signalStrength() > CLEAR_THRESHOLD;
   }
 
+  protected isCurrentChannelCompleted(): boolean {
+    const ch = this.simState.connectedFrequency();
+    if (!ch) return false;
+    if (this.completedChannels().has(ch as Channel['id'])) return true;
+    return this.signalPanelDismissed().has(ch);
+  }
+
+  protected dismissSignalPanel(): void {
+    const ch = this.simState.connectedFrequency();
+    if (!ch) return;
+    this.signalPanelDismissed.update((s) => new Set(s).add(ch));
+  }
+
   protected isGarbled(): boolean {
     const s = this.signalStrength();
     return s > GARBLED_THRESHOLD && s <= CLEAR_THRESHOLD;
@@ -332,6 +346,11 @@ export class WalkieTalkieComponent implements OnDestroy {
     }));
     this.currentTune.set(this.deadFrequencyFor(ch.freqGHz));
     this._currentNodeId.set(null);
+    this.signalPanelDismissed.update((s) => {
+      const next = new Set(s);
+      next.delete(id);
+      return next;
+    });
     this.recomputeSignal();
     this.pttFeedback.set('');
   }

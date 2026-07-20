@@ -411,6 +411,27 @@
   z-index: 10;
   box-shadow: 0 10px 20px rgba(0,0,0,0.5);
 
+  &.dismissible {
+    .btn-dismiss {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 2px 6px;
+      border-radius: 3px;
+
+      &:hover {
+        color: var(--error);
+        background: rgba(239, 68, 68, 0.1);
+      }
+    }
+  }
+
   h5 {
     font-family: var(--font-mono);
     font-size: 0.7rem;
