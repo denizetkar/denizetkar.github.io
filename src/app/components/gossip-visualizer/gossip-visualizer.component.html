@@ -3,45 +3,93 @@
     <div class="canvas-header">
       <div class="header-info">
         <h3>Gossip Network Graph</h3>
-        <p>Interactive peer-to-peer gossip protocol simulation. Click nodes to spread data.</p>
+        <p>Interactive peer-to-peer gossip protocol simulation. Click nodes to spread data, click links to partition, shift-click a node to fail it.</p>
       </div>
       <div class="header-stats">
         <span class="badge glow-border">
-          CONVERGENCE: {{ ((infectionCount() / totalNodesCount()) * 100) | number:'1.0-0' }}%
+          CONVERGENCE: {{ simState.convergencePercent() }}%
         </span>
         <span class="badge">
           NODES: {{ infectionCount() }} / {{ totalNodesCount() }}
+        </span>
+        <span class="badge">
+          MSGS: {{ messagesSent() }}
+        </span>
+        <span class="badge">
+          TICKS: {{ tickCount() }}
         </span>
       </div>
     </div>
 
     <div class="canvas-wrapper">
       <canvas #canvasElement (click)="handleCanvasClick($event)"></canvas>
+      @if (isPartitioned()) {
+        <div class="partition-banner">⚠️ NETWORK PARTITIONED — {{ partitions().length }} COMPONENTS</div>
+      }
     </div>
 
     <div class="canvas-footer">
-      <button class="control-btn glow-border" (click)="injectEpidemic()">
-        <span class="icon">📡</span> Spread Gossip
-      </button>
-      <button class="control-btn" (click)="resetSimulation()">
-        <span class="icon">🔄</span> Reset Mesh
-      </button>
+      <div class="mode-group">
+        <span class="mode-label">MODE</span>
+        <button
+          class="control-btn"
+          [class.active]="simState.gossipMode() === 'push'"
+          (click)="setMode('push')"
+        >Push</button>
+        <button
+          class="control-btn"
+          [class.active]="simState.gossipMode() === 'pull'"
+          (click)="setMode('pull')"
+        >Pull</button>
+        <button
+          class="control-btn"
+          [class.active]="simState.gossipMode() === 'push-pull'"
+          (click)="setMode('push-pull')"
+        >Push-Pull</button>
+      </div>
+      <div class="action-group">
+        <button class="control-btn glow-border" (click)="injectEpidemic()">
+          <span class="icon">📡</span> Spread Gossip
+        </button>
+        <button class="control-btn" (click)="runAntiEntropy()">
+          <span class="icon">🔄</span> Anti-Entropy
+        </button>
+        <button class="control-btn" (click)="resetSimulation()">
+          <span class="icon">♻️</span> Reset Mesh
+        </button>
+      </div>
     </div>
   </div>
 
   <div class="visualizer-sidebar glass-panel">
+    @if (argCode(); as code) {
+      <div class="arg-solved-banner">
+        <div class="arg-label">PARTITION SURVIVED</div>
+        <div class="arg-code">{{ code }}</div>
+        <p class="arg-hint">Submit via terminal: <code>solve {{ code }}</code></p>
+      </div>
+    }
     @if (selectedNode(); as node) {
       <div class="node-details">
         <div class="category-tag" [attr.data-category]="node.category">
           {{ node.category | uppercase }}
         </div>
         <h2 class="node-title glow-text">{{ node.title }}</h2>
-        
+
         <div class="node-content">
           @for (paragraph of node.body; track $index) {
             <p>{{ paragraph }}</p>
           }
         </div>
+
+        @if (simState.gossipArgPartition().length > 0) {
+          <div class="arg-cuts">
+            <div class="arg-cuts-label">ACTIVE PARTITIONS:</div>
+            @for (cut of simState.gossipArgPartition(); track $index) {
+              <code class="arg-cut">{{ cut }}</code>
+            }
+          </div>
+        }
       </div>
     } @else {
       <div class="empty-state">
