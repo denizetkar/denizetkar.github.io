@@ -531,10 +531,11 @@ export class TerminalComponent implements AfterViewChecked {
       return;
     }
     if (flags['partition']) {
-      const node = typeof flags['partition'] === 'string' ? flags['partition'] : (args[0] ?? '');
-      if (!node) { this.printLine('gossip --partition requires a node id', 'error'); return; }
-      this.simState.gossipArgPartition.update((p) => [...p, node]);
-      this.printLine(`Partitioned node "${node}" from the gossip cluster.`, 'system');
+      const raw = typeof flags['partition'] === 'string' ? flags['partition'] : (args[0] ?? '');
+      if (!raw) { this.printLine('gossip --partition requires a node id', 'error'); return; }
+      const cuts = raw.split(',').map((c) => c.trim()).filter((c) => c.length > 0);
+      this.simState.gossipArgPartition.update((p) => [...p, ...cuts]);
+      this.printLine(`Partitioned ${cuts.length} link(s) from the gossip cluster.`, 'system');
       return;
     }
     if (flags['fail']) {
@@ -608,7 +609,15 @@ export class TerminalComponent implements AfterViewChecked {
     if (!this.simState.gossipArgSolved()) { this.printLine('solve: preconditions not met. Resolve the gossip ARG first.', 'error'); return; }
     this.achievements.unlock('arg-solved');
     this.simState.argCompleted.set(true);
-    this.printLine('SIGMA-13 accepted. ARG chain resolved. Achievement unlocked.', 'success');
+    this.print([
+      { text: '  ___ ___ ___ _  _ ___ _    _   _    ___ ___', type: 'success' },
+      { text: ' | _ \\ __/ __| || | __| |  | | | |  | __| _ \\', type: 'success' },
+      { text: ' |  _/ _|\\__ \\ __ | _|| |__| |_| |__| _||   /', type: 'success' },
+      { text: ' |_| |___|___/_||_|___|____|\\___/____|___|_|', type: 'success' },
+      { text: '', type: 'output' },
+      { text: '*** MISSION COMPLETE — ARG CHAIN RESOLVED ***', type: 'success' },
+      { text: 'OMEGA-7 launched. Partition [A-B,B-C,C-D] healed. SIGMA-13 accepted.', type: 'system' },
+    ]);
   }
 
   private cmdReboot(): void {

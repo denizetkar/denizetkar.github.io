@@ -619,6 +619,10 @@ export class RocketSimulatorComponent implements OnInit, OnDestroy {
     this.clearTimers();
     this.addLog('✨ APOGEE REACHED. Main engines cut. Stable ascent confirmed.', 'success');
     this.addLog('Teknofest Flight Computer status: Apogee nominal. Payload ready for deployment.', 'success');
+    // ARG profile (set by `launch --code OMEGA-7`) prints the gossip partition signature.
+    if (this.simState.rocketConfig().specialProfile === 'arg') {
+      this.addLog('partition signature detected: [A-B,B-C,C-D]', 'milestone');
+    }
     this.achievements.unlock('apogee-reached');
     this.efficiency.set(this.computeEfficiency());
     this.pushStateToService();

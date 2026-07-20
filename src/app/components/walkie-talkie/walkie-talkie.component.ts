@@ -39,7 +39,7 @@ const TNG = 'TNG Technology Consulting in Munich — I work fullstack across Pyt
 const BOGAZICI = 'Boğaziçi University — two B.Sc. degrees (Industrial Engineering + Computer Engineering, 2013-2019, GPA 3.68). Operations research, optimization, stats, plus the beautiful campus.';
 const ADVICE = 'My advice: do not run away from systems code. Assembly, memory, and OS kernels make you a better coder, even if you ship Angular and Python most days.';
 const LOWLEVEL = 'DPDK and embedded C++ taught me to respect every nanosecond. The low-level roots run deep — I squeeze performance out of Angular templates and Python pipelines now, but the instinct is the same.';
-const HIDDEN = 'CH5 hidden band. You found the frequency the noise floor hides. Every conversation matters — every nanosecond matters. Transmission ends.';
+const HIDDEN = 'CH5 hidden band. You found the frequency the noise floor hides. Every conversation matters — every nanosecond matters. Static resolves into a whispered launch code: OMEGA-7. Transmission ends.';
 
 export const DIALOGUE_NODES: readonly DialogueNode[] = [
   // CH1 — TNG + fullstack

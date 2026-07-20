@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { DataService } from './services/data.service';
 import { ThemeService, AppTheme } from './services/theme.service';
 import { AchievementService, Achievement } from './services/achievement.service';
+import { SimulationStateService } from './services/simulation-state.service';
 import { TerminalComponent } from './components/terminal/terminal.component';
 import { GossipVisualizerComponent } from './components/gossip-visualizer/gossip-visualizer.component';
 import { RocketSimulatorComponent } from './components/rocket-simulator/rocket-simulator.component';
@@ -32,9 +33,13 @@ export class App implements OnDestroy {
   public readonly dataService = inject(DataService);
   public readonly themeService = inject(ThemeService);
   public readonly achievements = inject(AchievementService);
+  public readonly simState = inject(SimulationStateService);
 
   // Active dashboard tab selection
   protected readonly activeTab = signal<DashboardTab>('gossip');
+
+  // ARG-completed site-wide green flash overlay
+  protected readonly argCompleted = computed(() => this.simState.argCompleted());
 
   // Interactive console toggles
   protected readonly isTerminalOpen = signal(false);

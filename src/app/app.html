@@ -1,3 +1,8 @@
+<!-- ARG solved: site-wide green flash overlay -->
+@if (argCompleted()) {
+  <div class="arg-solved-flash" aria-hidden="true"></div>
+}
+
 <!-- Main system crash overlay (GPOD) -->
 @if (isSystemCrashed()) {
   <div class="gsod-overlay">
