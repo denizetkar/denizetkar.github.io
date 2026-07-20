@@ -53,8 +53,49 @@ EIP: 0xDEB00224  EFLAGS: [CF PF AF ZF SF TF IF DF OF]
         (click)="selectTheme('terminal')">
         📟 Term
       </button>
+      <button
+        class="achievements-btn glow-border"
+        [class.panel-open]="isAchievementsPanelOpen()"
+        (click)="toggleAchievementsPanel()"
+        [attr.aria-label]="unlockedAchievements().length + ' of ' + totalAchievements() + ' achievements unlocked'">
+        🏆 {{ unlockedAchievements().length }}/{{ totalAchievements() }}
+      </button>
     </div>
   </header>
+
+  <!-- Achievement unlock notification toast -->
+  @if (activeNotification(); as notification) {
+    <div class="achievement-toast glass-panel glow-border" role="status" aria-live="polite">
+      <div class="toast-icon">🏆</div>
+      <div class="toast-body">
+        <div class="toast-title">ACHIEVEMENT UNLOCKED</div>
+        <div class="toast-name">{{ notification.title }}</div>
+        <div class="toast-desc">{{ notification.description }}</div>
+      </div>
+      <button class="toast-dismiss" (click)="dismissNotification()" aria-label="Dismiss notification">✕</button>
+    </div>
+  }
+
+  <!-- Achievements panel -->
+  @if (isAchievementsPanelOpen()) {
+    <div class="achievements-panel glass-panel glow-border">
+      <div class="panel-header">
+        <h3>🏆 Achievements</h3>
+        <button class="panel-close" (click)="toggleAchievementsPanel()" aria-label="Close achievements panel">✕</button>
+      </div>
+      <div class="panel-list">
+        @for (a of achievements.achievements(); track a.id) {
+          <div class="achievement-row" [class.unlocked]="a.unlocked">
+            <span class="row-icon">{{ a.unlocked ? '✅' : '🔒' }}</span>
+            <div class="row-content">
+              <span class="row-title">{{ a.title }}</span>
+              <span class="row-desc">{{ a.description }}</span>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
 
   <!-- Navigation Sidebar / Tabs Dock -->
   <nav class="app-navigation glass-panel">

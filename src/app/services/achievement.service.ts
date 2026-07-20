@@ -1,4 +1,5 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
+import { SimulationStateService, GossipEasterEggNode } from './simulation-state.service';
 
 export interface Achievement {
   id: string;
@@ -60,6 +61,25 @@ const INITIAL_ACHIEVEMENTS: Achievement[] = [
   },
 ];
 
+const BASE_ACHIEVEMENT_IDS = [
+  'apogee-reached',
+  'all-packets-routed',
+  'all-conversations-complete',
+  'gossip-converged',
+  'hidden-command-found',
+];
+
+const GOSSIP_EASTER_EGG: GossipEasterEggNode = {
+  id: 'easter-egg',
+  label: 'Easter Egg',
+  title: 'Hidden Gossip Node',
+  body: [
+    'You found the hidden gossip node.',
+    'DPDK routing mastery unlocks back-channel gossip.',
+    'Packet whispers travel faster than rumors.',
+  ],
+};
+
 @Injectable({
   providedIn: 'root',
 })
@@ -68,21 +88,42 @@ export class AchievementService {
     INITIAL_ACHIEVEMENTS.map((a) => ({ ...a })),
   );
 
+  public readonly recentlyUnlocked = signal<Achievement | null>(null);
+
+  private readonly simState = inject(SimulationStateService);
+
   constructor() {
     this.restore();
+    this.applyCrossUnlocksFromState();
   }
 
   public unlock(achievementId: string): void {
+    let didChange = false;
+    let unlockedAchievement: Achievement | null = null;
     this.achievements.update((list) => {
       const idx = list.findIndex((a) => a.id === achievementId);
       if (idx === -1 || list[idx].unlocked) {
         return list;
       }
+      didChange = true;
       const next = list.slice();
-      next[idx] = { ...next[idx], unlocked: true };
+      const updated = { ...next[idx], unlocked: true };
+      next[idx] = updated;
+      unlockedAchievement = updated;
       return next;
     });
-    this.persist();
+    if (didChange) {
+      this.persist();
+      this.applyCrossUnlock(achievementId);
+      this.checkMetaAchievement();
+      if (unlockedAchievement !== null) {
+        this.recentlyUnlocked.set(unlockedAchievement);
+      }
+    }
+  }
+
+  public clearRecentlyUnlocked(): void {
+    this.recentlyUnlocked.set(null);
   }
 
   public isUnlocked(achievementId: string): boolean {
@@ -92,6 +133,74 @@ export class AchievementService {
 
   public getUnlocked(): Achievement[] {
     return this.achievements().filter((a) => a.unlocked);
+  }
+
+  private applyCrossUnlock(achievementId: string): void {
+    switch (achievementId) {
+      case 'all-packets-routed':
+        if (this.simState.gossipEasterEgg() === null) {
+          this.simState.gossipEasterEgg.set(GOSSIP_EASTER_EGG);
+        }
+        break;
+      case 'all-conversations-complete':
+        if (this.simState.rocketConfig().specialProfile !== 'nyancat-achievement') {
+          this.simState.rocketConfig.update((cfg) => ({
+            ...cfg,
+            specialProfile: 'nyancat-achievement',
+          }));
+        }
+        break;
+      case 'gossip-converged': {
+        const found = this.simState.foundFrequencies();
+        if (!found.some((f) => f.startsWith('CH5'))) {
+          this.simState.foundFrequencies.update((list) => [...list, 'CH5:2.490']);
+        }
+        break;
+      }
+      case 'hidden-command-found':
+        if (!this.simState.dpdkPresetUnlocked()) {
+          this.simState.dpdkPresetUnlocked.set(true);
+        }
+        break;
+      case 'apogee-reached':
+        // Terminal VFS already gates .secrets on this achievement — nothing to do here.
+        break;
+      default:
+        break;
+    }
+  }
+
+  private checkMetaAchievement(): void {
+    if (this.isUnlocked('arg-solved')) {
+      return;
+    }
+    const allBase = BASE_ACHIEVEMENT_IDS.every((id) => this.isUnlocked(id));
+    if (!allBase) {
+      return;
+    }
+    this.achievements.update((list) => {
+      const idx = list.findIndex((a) => a.id === 'arg-solved');
+      if (idx === -1 || list[idx].unlocked) {
+        return list;
+      }
+      const next = list.slice();
+      const updated = { ...next[idx], unlocked: true };
+      next[idx] = updated;
+      this.recentlyUnlocked.set(updated);
+      return next;
+    });
+    this.persist();
+  }
+
+  private applyCrossUnlocksFromState(): void {
+    for (const id of BASE_ACHIEVEMENT_IDS) {
+      if (this.isUnlocked(id)) {
+        this.applyCrossUnlock(id);
+      }
+    }
+    if (this.isUnlocked('arg-solved')) {
+      // arg-solved is the meta — already persisted; nothing else to apply.
+    }
   }
 
   private restore(): void {

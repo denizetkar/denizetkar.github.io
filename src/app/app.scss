@@ -99,6 +99,168 @@
   }
 }
 
+.achievements-btn {
+  margin-left: 6px;
+  padding: 6px 10px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  border-radius: 4px;
+  color: var(--accent);
+  background: var(--bg-tertiary);
+
+  &.panel-open {
+    background: var(--accent);
+    color: #000;
+  }
+}
+
+// Achievement unlock notification toast
+.achievement-toast {
+  position: fixed;
+  top: 84px;
+  right: 24px;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  max-width: 360px;
+  animation: toast-slide-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  .toast-icon {
+    font-size: 1.6rem;
+  }
+
+  .toast-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+  }
+
+  .toast-title {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+  }
+
+  .toast-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .toast-desc {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+
+  .toast-dismiss {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    cursor: pointer;
+    padding: 2px 6px;
+
+    &:hover {
+      color: var(--text-primary);
+    }
+  }
+}
+
+@keyframes toast-slide-in {
+  from { transform: translateX(120%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+// Achievements panel
+.achievements-panel {
+  position: fixed;
+  top: 84px;
+  right: 24px;
+  z-index: 199;
+  width: 320px;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-glass);
+
+    h3 {
+      font-size: 0.9rem;
+      color: var(--accent);
+      margin: 0;
+    }
+
+    .panel-close {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 0.9rem;
+
+      &:hover {
+        color: var(--text-primary);
+      }
+    }
+  }
+
+  .panel-list {
+    overflow-y: auto;
+    margin-top: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .achievement-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 6px;
+    opacity: 0.55;
+
+    &.unlocked {
+      opacity: 1;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .row-icon {
+      font-size: 1rem;
+      line-height: 1.2;
+    }
+
+    .row-content {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .row-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .row-desc {
+      font-size: 0.68rem;
+      color: var(--text-secondary);
+      line-height: 1.35;
+    }
+  }
+}
+
 .app-navigation {
   grid-area: nav;
   display: flex;

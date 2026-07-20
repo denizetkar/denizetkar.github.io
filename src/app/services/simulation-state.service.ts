@@ -55,6 +55,14 @@ export interface ConversationState {
 
 export type GossipMode = 'push' | 'pull' | 'push-pull';
 
+/** Hidden gossip node unlocked by the `all-packets-routed` DPDK achievement. */
+export interface GossipEasterEggNode {
+  id: string;
+  label: string;
+  title: string;
+  body: string[];
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -121,4 +129,8 @@ export class SimulationStateService {
   // --- Terminal ---
   public readonly commandHistory = signal<string[]>([]);
   public readonly routeInjectRequested = signal<boolean>(false);
+
+  // --- Cross-widget achievement unlocks ---
+  public readonly gossipEasterEgg = signal<GossipEasterEggNode | null>(null);
+  public readonly dpdkPresetUnlocked = signal<boolean>(false);
 }
