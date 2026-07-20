@@ -1,9 +1,9 @@
 .app-layout {
   display: grid;
   grid-template-areas: 
-    "header header"
-    "nav main";
-  grid-template-columns: 200px 1fr;
+    "header header header"
+    "nav main profile";
+  grid-template-columns: 200px 1fr 240px;
   grid-template-rows: 70px 1fr;
   height: 100vh;
   width: 100vw;
@@ -16,13 +16,23 @@
     padding-bottom: 270px;
   }
 
+  @media (max-width: 1024px) {
+    grid-template-areas: 
+      "header header"
+      "nav main"
+      "profile profile";
+    grid-template-columns: 200px 1fr;
+    grid-template-rows: 70px 1fr auto;
+  }
+
   @media (max-width: 768px) {
     grid-template-areas: 
       "header"
       "nav"
-      "main";
+      "main"
+      "profile";
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto 1fr;
+    grid-template-rows: auto auto 1fr auto;
     overflow-y: auto;
     height: auto;
     min-height: 100vh;
@@ -510,4 +520,220 @@
   0% { opacity: 0; }
   15% { opacity: 1; }
   100% { opacity: 0; }
+}
+
+// ---- Profile Assembly Panel ----
+.profile-panel {
+  grid-area: profile;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  overflow: hidden;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &.collapsed {
+    padding: 6px 4px;
+  }
+
+  @media (max-width: 1024px) {
+    max-height: 280px;
+  }
+}
+
+.profile-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-glass);
+  flex-shrink: 0;
+}
+
+.profile-collapse-btn {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--accent);
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--bg-tertiary);
+
+  &:hover {
+    background: var(--accent);
+    color: #000;
+  }
+}
+
+.profile-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+}
+
+.profile-title {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+}
+
+.profile-progress {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+
+  &.complete {
+    color: var(--accent);
+    text-shadow: 0 0 var(--glow-intensity) var(--accent-glow);
+    animation: profile-pulse 1.5s ease-in-out infinite;
+  }
+}
+
+@keyframes profile-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.profile-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.profile-section {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-glass);
+  background: rgba(255, 255, 255, 0.02);
+  transition: all 0.3s ease;
+
+  &.decrypted {
+    border-color: var(--accent);
+    background: rgba(20, 184, 166, 0.05);
+    box-shadow: 0 0 4px var(--accent-glow);
+    animation: decrypt-in 0.5s ease-out;
+  }
+
+  &.locked {
+    opacity: 0.7;
+  }
+}
+
+@keyframes decrypt-in {
+  0% { opacity: 0.3; filter: blur(4px); }
+  100% { opacity: 1; filter: blur(0); }
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.section-icon {
+  font-size: 0.8rem;
+}
+
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.section-jump {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--accent);
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--bg-tertiary);
+
+  &:hover {
+    background: var(--accent);
+    color: #000;
+  }
+}
+
+.section-body {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.section-line {
+  font-size: 0.62rem;
+  line-height: 1.35;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+.section-encrypted {
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  letter-spacing: 0.15em;
+  text-align: center;
+  padding: 2px 0;
+}
+
+.profile-complete-banner {
+  margin-top: 6px;
+  padding: 8px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  background: rgba(20, 184, 166, 0.1);
+  border-radius: 6px;
+  animation: decrypt-in 0.6s ease-out;
+}
+
+// ---- Shared objective banner (used by widgets via :host ::ng-deep fallback) ----
+// Each widget defines its own .objective-banner in its component SCSS using the
+// tokens below; these rules are the shared app-level baseline.
+.objective-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  margin-bottom: 8px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--bg-glass);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 0 var(--glow-intensity) var(--accent-glow);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.objective-text {
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+  flex: 1;
+  min-width: 0;
+}
+
+.objective-status {
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
 }

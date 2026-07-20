@@ -748,7 +748,6 @@ export class GossipVisualizerComponent implements OnInit, OnDestroy, AfterViewIn
 
     // Otherwise: did the user click a node?
     const clicked = this.nodes.find((node) => {
-      if (node.failed) return false;
       const dx = node.x - clickX;
       const dy = node.y - clickY;
       return Math.sqrt(dx * dx + dy * dy) < node.radius;
@@ -758,6 +757,20 @@ export class GossipVisualizerComponent implements OnInit, OnDestroy, AfterViewIn
       // Right-click (or shift-click) toggles node failure.
       if (event.shiftKey) {
         this.protocol.handleNodeFailure(clicked, this.nodes);
+        this.syncSimState();
+        return;
+      }
+      if (clicked.failed) {
+        clicked.failed = false;
+        clicked.state = 'idle';
+        clicked.infectionTime = 0;
+        clicked.messages.clear();
+        for (const link of this.links) {
+          if (link.from === clicked.id || link.to === clicked.id) {
+            link.severed = false;
+          }
+        }
+        this.selectedNode.set(clicked);
         this.syncSimState();
         return;
       }

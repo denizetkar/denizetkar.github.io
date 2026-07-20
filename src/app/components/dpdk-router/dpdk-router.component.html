@@ -1,4 +1,12 @@
 <div class="router-container glass-panel">
+  <div class="objective-banner">
+    <span class="objective-text">
+      <span class="obj-tag">OBJECTIVE</span>
+      Fix the broken routing table and route all 4 packets. Add a rule for the missing subnet, then inject traffic.
+    </span>
+    <span class="objective-status">PACKETS ROUTED: {{ routedCount() }}/4 / CPU: {{ cpuLoad() }}%</span>
+  </div>
+  <div class="router-row">
   <div class="router-dashboard">
     <div class="router-controls">
       <h3>DPDK Routing Engine</h3>
@@ -38,9 +46,10 @@
         <div class="form-group">
           <label>Target Subnet (CIDR)</label>
           <select [ngModel]="newCidr()" (ngModelChange)="newCidr.set($event)">
+            <option value="10.10.0.0/16">10.10.0.0/16 (LAN Subnet)</option>
             <option value="10.20.0.0/24">10.20.0.0/24 (WAN Subnet)</option>
             <option value="192.168.50.0/24">192.168.50.0/24 (DMZ Zone)</option>
-            <option value="172.30.0.0/16">172.30.0.0/16 (Cluster Local)</option>
+            <option value="172.30.0.0/16">172.30.0.0/16 (Cluster-Local)</option>
             <option value="0.0.0.0/0">0.0.0.0/0 (Default Route)</option>
           </select>
         </div>
@@ -136,5 +145,6 @@
         </div>
       }
     </div>
+  </div>
   </div>
 </div>

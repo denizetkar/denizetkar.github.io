@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, inject, signal, AfterViewChecked } from '@angular/core';
+import { Component, ElementRef, ViewChild, inject, signal, computed, AfterViewChecked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DataService } from '../../services/data.service';
@@ -233,6 +233,15 @@ export class TerminalComponent implements AfterViewChecked {
   @ViewChild('cmdInput') private cmdInput!: ElementRef;
 
   protected readonly inputValue = signal('');
+
+  protected readonly unlockedAchievementCount = computed<number>(() =>
+    this.achievements.achievements().filter((a) => a.unlocked).length,
+  );
+
+  protected readonly totalAchievementCount = computed<number>(() =>
+    this.achievements.achievements().length,
+  );
+
   protected readonly history = signal<TerminalLine[]>([
     { text: 'Welcome to Deniz\'s Interactive CLI (v2.0.0).', type: 'system' },
     { text: 'Type "help" for a list of available commands.', type: 'system' },

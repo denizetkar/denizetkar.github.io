@@ -1,4 +1,12 @@
 <div class="radio-widget" [class.power-off]="!isPowered()">
+  <div class="objective-banner">
+    <span class="objective-text">
+      <span class="obj-tag">OBJECTIVE</span>
+      Complete all 4 channel conversations. Scan for frequencies, tune in, and talk.
+    </span>
+    <span class="objective-status">CHANNELS COMPLETE: {{ completedChannels().size }}/4</span>
+  </div>
+
   <!-- Walkie-Talkie Antenna and Knobs -->
   <div class="hardware-top">
     <div class="antenna"></div>

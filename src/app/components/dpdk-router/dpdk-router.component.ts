@@ -71,7 +71,6 @@ export class RoutingEngine {
 }
 
 const DEFAULT_RULES: RouteRule[] = [
-  { destination: '10.10.0.0/16', nextHop: '192.168.1.1', interface: 'Port 1 (WAN)' },
   { destination: '172.16.0.0/12', nextHop: '10.0.0.1', interface: 'Port 2 (LAN)' },
   { destination: '192.168.0.0/16', nextHop: '192.168.10.1', interface: 'Port 3 (DMZ)' },
   { destination: '0.0.0.0/0', nextHop: '192.168.10.1', interface: 'Port 3 (DMZ)' },
@@ -96,9 +95,10 @@ export class DpdkRouterComponent implements OnDestroy {
   public readonly cpuLoad = signal(0);
   public readonly packetRate = signal(0);
   public readonly alarmActive = signal(false);
-  public readonly newCidr = signal('10.20.0.0/24');
+  public readonly routedCount = signal(0);
+  public readonly newCidr = signal('10.10.0.0/16');
   public readonly newPort = signal('Port 1 (WAN)');
-  public readonly newGateway = signal('192.168.20.1');
+  public readonly newGateway = signal('192.168.1.1');
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private packetIdCounter = 0;
 
@@ -185,6 +185,9 @@ export class DpdkRouterComponent implements OnDestroy {
     if (totalAttempted > 0 && routed.length === totalAttempted && loopingCount === 0 && dropped.length === 0) {
       this.achievements.unlock('all-packets-routed');
     }
+    if (routed.length > 0) {
+      this.routedCount.update((n) => n + routed.length);
+    }
     const cpu = Math.min(100, processed * PROCESSING_COST);
     this.cpuLoad.set(cpu);
     const packetsPerSec = (processed * 1000) / TICK_MS;
@@ -201,6 +204,7 @@ export class DpdkRouterComponent implements OnDestroy {
 
   injectTraffic(): void {
     this.clearInterval();
+    this.routedCount.set(0);
     for (const dst of ['10.10.5.20', '172.16.8.4', '192.168.50.10', '8.8.8.8']) this.injectPacket(dst);
     this.intervalId = setInterval(() => this.processTick(), TICK_MS);
   }
@@ -210,6 +214,7 @@ export class DpdkRouterComponent implements OnDestroy {
     this.cpuLoad.set(0);
     this.packetRate.set(0);
     this.alarmActive.set(false);
+    this.routedCount.set(0);
     this.syncToSimState([], []);
   }
   resetRouter(): void {

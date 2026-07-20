@@ -1,4 +1,11 @@
 <div class="terminal-container" (click)="focusInput()">
+  <div class="objective-banner">
+    <span class="objective-text">
+      <span class="obj-tag">OBJECTIVE</span>
+      Explore the file system and find the decryption command. Start with `ls` and `cat`.
+    </span>
+    <span class="objective-status">ACHIEVEMENTS: {{ unlockedAchievementCount() }}/{{ totalAchievementCount() }}</span>
+  </div>
   <div class="terminal-header">
     <div class="terminal-buttons">
       <span class="btn close"></span>

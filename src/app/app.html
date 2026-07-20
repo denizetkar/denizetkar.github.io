@@ -102,6 +102,59 @@ EIP: 0xDEB00224  EFLAGS: [CF PF AF ZF SF TF IF DF OF]
     </div>
   }
 
+  <!-- Profile Assembly Panel (always visible right sidebar) -->
+  <aside class="profile-panel glass-panel" [class.collapsed]="!isProfilePanelOpen()">
+    <div class="profile-panel-header">
+      <button
+        class="profile-collapse-btn"
+        (click)="toggleProfilePanel()"
+        [attr.aria-label]="isProfilePanelOpen() ? 'Collapse profile panel' : 'Expand profile panel'">
+        {{ isProfilePanelOpen() ? '▶' : '◀' }}
+      </button>
+      <div class="profile-header-text">
+        <div class="profile-title">PROFILE ASSEMBLY</div>
+        <div class="profile-progress" [class.complete]="profileComplete()">
+          DECRYPTION: {{ profileDecryptCount() }}/{{ profileSections().length }}{{ profileComplete() ? ' COMPLETE' : '' }}
+        </div>
+      </div>
+    </div>
+
+    @if (isProfilePanelOpen()) {
+      <div class="profile-sections">
+        @for (section of profileSections(); track section.id) {
+          <div
+            class="profile-section"
+            [class.decrypted]="section.decrypted"
+            [class.locked]="!section.decrypted">
+            <div class="section-header">
+              <span class="section-icon">{{ section.decrypted ? '🔓' : '🔒' }}</span>
+              <span class="section-label">{{ section.label }}</span>
+              @if (!section.decrypted) {
+                <button class="section-jump" (click)="jumpToTab(section.tab)" [attr.aria-label]="'Open ' + section.widget + ' widget to decrypt ' + section.label">
+                  → {{ section.widget }}
+                </button>
+              }
+            </div>
+            @if (section.decrypted) {
+              <div class="section-body">
+                @for (line of section.lines; track $index) {
+                  <p class="section-line">{{ line }}</p>
+                }
+              </div>
+            } @else {
+              <div class="section-encrypted">[ ENCRYPTED ]</div>
+            }
+          </div>
+        }
+        @if (profileComplete()) {
+          <div class="profile-complete-banner glow-border">
+            ✓ DECRYPTION COMPLETE — FULL PROFILE ASSEMBLED
+          </div>
+        }
+      </div>
+    }
+  </aside>
+
   <!-- Navigation Sidebar / Tabs Dock -->
   <nav class="app-navigation glass-panel">
     <button 

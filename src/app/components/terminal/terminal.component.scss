@@ -23,6 +23,42 @@
   }
 }
 
+.objective-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--accent);
+  background: rgba(20, 184, 166, 0.08);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  flex-wrap: wrap;
+  z-index: 11;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.obj-tag {
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin-right: 4px;
+}
+
+.objective-text {
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+  flex: 1;
+  min-width: 0;
+}
+
+.objective-status {
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
 .terminal-header {
   display: flex;
   align-items: center;

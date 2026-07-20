@@ -1,4 +1,12 @@
 <div class="simulator-container glass-panel">
+  <div class="objective-banner">
+    <span class="objective-text">
+      <span class="obj-tag">OBJECTIVE</span>
+      Reach 10,000m apogee. Tune thrust, fuel, and pitch — then launch.
+    </span>
+    <span class="objective-status">ALTITUDE: {{ altitude() }}m / STATUS: {{ flightState() | uppercase }}</span>
+  </div>
+  <div class="simulator-row">
   <div class="controls-panel">
     <h3>Flight Control Panel</h3>
     <p class="subtitle">Set flight parameters for Teknofest Rocket launch.</p>
@@ -168,6 +176,7 @@
         </svg>
       </div>
     </div>
+  </div>
   </div>
 
   <div class="telemetry-logs-panel glass-panel">

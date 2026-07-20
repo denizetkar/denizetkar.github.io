@@ -1,5 +1,12 @@
 <div class="visualizer-container glass-panel">
   <div class="visualizer-main">
+    <div class="objective-banner">
+      <span class="objective-text">
+        <span class="obj-tag">OBJECTIVE</span>
+        Spread gossip to 100% of nodes. Click 'Spread Gossip' to advance the protocol.
+      </span>
+      <span class="objective-status">CONVERGENCE: {{ simState.convergencePercent() }}%</span>
+    </div>
     <div class="canvas-header">
       <div class="header-info">
         <h3>Gossip Network Graph</h3>
@@ -34,6 +41,8 @@
       <span class="interaction"><span class="key">Click link</span> sever / partition</span>
       <span class="sep">·</span>
       <span class="interaction"><span class="key">Shift+click node</span> fail node</span>
+      <span class="sep">·</span>
+      <span class="interaction"><span class="key">Click failed node</span> revive</span>
       <span class="sep">·</span>
       <span class="interaction"><span class="key">📡 Spread Gossip</span> advance one round</span>
       <span class="sep">·</span>

@@ -18,6 +18,44 @@
   }
 }
 
+.objective-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  width: 100%;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--bg-glass);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 0 var(--glow-intensity) var(--accent-glow);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.obj-tag {
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin-right: 4px;
+}
+
+.objective-text {
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+  flex: 1;
+  min-width: 0;
+}
+
+.objective-status {
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
 .hardware-top {
   display: flex;
   align-items: flex-end;
