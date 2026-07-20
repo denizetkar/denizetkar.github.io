@@ -493,8 +493,12 @@ export class GossipVisualizerComponent implements OnInit, OnDestroy, AfterViewIn
     if (rect) {
       this.canvasWidth = rect.width;
       this.canvasHeight = rect.height || 450;
-      canvas.width = this.canvasWidth;
-      canvas.height = this.canvasHeight;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = this.canvasWidth * dpr;
+      canvas.height = this.canvasHeight * dpr;
+      canvas.style.width = `${this.canvasWidth}px`;
+      canvas.style.height = `${this.canvasHeight}px`;
+      this.ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
   }
 
