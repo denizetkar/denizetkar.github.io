@@ -3,7 +3,7 @@
   <div class="hardware-top">
     <div class="antenna"></div>
     <div class="dial-knob vol" [class.rotated]="isPowered()" (click)="togglePower()"></div>
-    <div class="dial-knob ch" [style.transform]="'rotate(' + (activeChannel() * 45) + 'deg)'"></div>
+    <div class="dial-knob ch" [style.transform]="'rotate(' + channelRotation() + 'deg)'"></div>
   </div>
 
   <div class="radio-body glow-border">
@@ -12,14 +12,14 @@
       @if (isPowered()) {
         <div class="battery-indicator">🔋 [III]</div>
         <div class="frequency-row">
-          <span class="freq">2.4{{ activeChannel() }}0 GHz</span>
-          <span class="sig-bars">📶</span>
+          <span class="freq">{{ currentTune().toFixed(3) }} GHz</span>
+          <span class="sig-bars">📶 {{ signalStrength().toFixed(2) }}</span>
         </div>
-        <div class="status-badge" [ngClass]="radioStatus()">
-          {{ radioStatus() | uppercase }}
+        <div class="status-badge" [ngClass]="simState.radioState().radioStatus">
+          {{ simState.radioState().radioStatus | uppercase }}
         </div>
         <div class="screen-text" [class.static-lines]="staticActive()">
-          {{ receivedTransmission() }}
+          {{ simState.receivedTransmission() }}
         </div>
       } @else {
         <div class="screen-dead"></div>
@@ -29,15 +29,38 @@
     <!-- Interface Details -->
     <div class="controls-grid">
       <div class="ch-grid">
-        <button class="ch-btn" [class.active]="activeChannel() === 1" (click)="setChannel(1)">CH 1</button>
-        <button class="ch-btn" [class.active]="activeChannel() === 2" (click)="setChannel(2)">CH 2</button>
-        <button class="ch-btn" [class.active]="activeChannel() === 3" (click)="setChannel(3)">CH 3</button>
-        <button class="ch-btn" [class.active]="activeChannel() === 4" (click)="setChannel(4)">CH 4</button>
+        @for (ch of channels(); track ch.id) {
+          <button
+            class="ch-btn"
+            [class.active]="simState.connectedFrequency() === ch.id"
+            [class.completed]="completedChannels().has(ch.id)"
+            [disabled]="ch.hidden && !isFrequencyFound(ch.id)"
+            (click)="tuneChannel(ch.id)"
+          >
+            {{ ch.id }}
+          </button>
+        }
       </div>
 
-      <button class="btn-scan glow-border" (click)="scanBleDevices()">
-        🔍 SCAN BLE
+      <button class="btn-scan glow-border" (click)="scanFrequencies()">
+        🔍 SCAN FREQ
       </button>
+
+      <!-- Fine-tune slider -->
+      <label class="tune-label">
+        FINE TUNE: {{ currentTune().toFixed(3) }} GHz
+        <input
+          type="range"
+          min="2.400"
+          max="2.500"
+          step="0.001"
+          [value]="currentTune()"
+          (input)="setCurrentTune(parseFloatValue($any($event.target).value))"
+        />
+      </label>
+      <div class="signal-meter">
+        SIGNAL: {{ signalStrength().toFixed(2) }} {{ signalStrength() > 0.8 ? '✓ CLEAR' : '✗ NOISY' }}
+      </div>
     </div>
 
     <!-- Speaker Slits -->
@@ -50,46 +73,53 @@
     </div>
   </div>
 
-  <!-- PTT Trigger (Positions on left or below for layout) -->
+  <!-- PTT Trigger (repurposed as "transmit" to confirm a dialogue choice) -->
   <div class="ptt-holder">
-    <button 
-      class="ptt-btn" 
+    <button
+      class="ptt-btn"
       [class.pressed]="isPttHeld()"
-      [disabled]="!isPowered() || !connectedDevice()"
+      [disabled]="!isPowered() || !simState.connectedFrequency()"
       (mousedown)="startPtt()"
       (mouseup)="stopPtt()"
       (mouseleave)="stopPtt()"
       (touchstart)="startPtt(); $event.preventDefault()"
       (touchend)="stopPtt()">
-      🎙️ PTT (HOLD)
+      🎙️ PTT (TRANSMIT)
     </button>
   </div>
 
-  <!-- Device Discovery Drawer overlay -->
-  @if (isPowered() && (isScanning() || foundDevices().length > 0) && !connectedDevice()) {
+  <!-- Dialogue panel -->
+  @if (isPowered() && simState.connectedFrequency() && currentDialogueNode()) {
     <div class="discovery-panel glass-panel glow-border">
-      <h5>BLE Discovery Queue</h5>
-      
-      @if (isScanning()) {
-        <div class="scanning-loader">
-          <span class="pulse-circle"></span>
-          <p>Scanning BLE advertisements...</p>
-        </div>
-      } @else {
+      <h5>{{ simState.connectedFrequency() }} — DIALOGUE</h5>
+      <div class="screen-text dialogue-text">{{ simState.receivedTransmission() }}</div>
+      @if ((currentDialogueNode()?.choices?.length ?? 0) > 0) {
         <div class="device-list">
-          @for (dev of foundDevices(); track dev.address) {
-            <div class="device-row" (click)="connectToDevice(dev)">
+          @for (choice of currentDialogueNode()?.choices; track choice.label) {
+            <div class="device-row" (click)="transmit(choice.label); stopPtt()">
               <div class="info">
-                <span class="name">{{ dev.name }}</span>
-                <span class="addr">{{ dev.address }}</span>
+                <span class="name">▸ {{ choice.label }}</span>
               </div>
-              <span class="rssi" [style.color]="dev.rssi > -60 ? 'var(--accent)' : 'var(--text-muted)'">
-                {{ dev.rssi }} dBm
-              </span>
             </div>
           }
         </div>
+      } @else {
+        <div class="device-list">
+          <div class="device-row" (click)="completeCurrentChannel()">
+            <div class="info">
+              <span class="name">▸ Over and out</span>
+            </div>
+          </div>
+        </div>
       }
+      @if (!currentDialogueNode()) {
+        <button class="btn-scan glow-border" (click)="startDialogue()">START TRANSMISSION</button>
+      }
+    </div>
+  } @else if (isPowered() && simState.connectedFrequency()) {
+    <div class="discovery-panel glass-panel glow-border">
+      <h5>{{ simState.connectedFrequency() }} — STANDBY</h5>
+      <button class="btn-scan glow-border" (click)="startDialogue()">START TRANSMISSION</button>
     </div>
   }
 </div>
