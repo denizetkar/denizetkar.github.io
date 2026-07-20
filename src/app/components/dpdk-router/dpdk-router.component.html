@@ -14,8 +14,9 @@
         </div>
 
         <div class="telemetry-box">
-          <span class="label">Throughput</span>
+          <span class="label">Throughput (single core sim)</span>
           <span class="value glow-text">{{ (packetRate() / 1000) | number:'1.1-2' }} Mpps</span>
+          <span class="label">Real DPDK: 10+ Mpps/core</span>
         </div>
       </div>
 
@@ -31,38 +32,35 @@
         </button>
       </div>
 
-      <!-- Add Rule Form -->
       <div class="rule-form glow-border">
         <h4>Insert Forwarding Entry</h4>
-        
+
         <div class="form-group">
           <label>Target Subnet (CIDR)</label>
           <select [ngModel]="newCidr()" (ngModelChange)="newCidr.set($event)">
             <option value="10.20.0.0/24">10.20.0.0/24 (WAN Subnet)</option>
             <option value="192.168.50.0/24">192.168.50.0/24 (DMZ Zone)</option>
             <option value="172.30.0.0/16">172.30.0.0/16 (Cluster Local)</option>
-            <option value="127.0.0.1/32">127.0.0.1/32 (Local Ring-0)</option>
+            <option value="0.0.0.0/0">0.0.0.0/0 (Default Route)</option>
           </select>
         </div>
 
         <div class="form-group">
+          <label>Next Hop Gateway</label>
+          <input
+            type="text"
+            [ngModel]="newGateway()"
+            (ngModelChange)="newGateway.set($event)"
+            placeholder="e.g. 192.168.20.1" />
+        </div>
+
+        <div class="form-group">
           <label>Physical Port Link</label>
-          <select [disabled]="makeLoop()" [ngModel]="newPort()" (ngModelChange)="newPort.set($event)">
+          <select [ngModel]="newPort()" (ngModelChange)="newPort.set($event)">
             <option value="Port 1 (WAN)">Port 1 (WAN / Fibre Channel)</option>
             <option value="Port 2 (LAN)">Port 2 (Gigabit Ethernet)</option>
             <option value="Port 3 (DMZ)">Port 3 (Virtual Switch)</option>
           </select>
-        </div>
-
-        <div class="form-group checkbox-group">
-          <input 
-            type="checkbox" 
-            id="makeLoopChk" 
-            [ngModel]="makeLoop()" 
-            (ngModelChange)="makeLoop.set($event)" />
-          <label for="makeLoopChk" class="loop-warning">
-            ⚠️ Enable Ring-0 Loopback routing (Cyclic routing)
-          </label>
         </div>
 
         <button class="btn-add" (click)="addRule()">
@@ -85,10 +83,10 @@
           </thead>
           <tbody>
             @for (rule of rules(); track $index) {
-              <tr [class.loop-row]="rule.isLoop">
-                <td>{{ rule.cidr }}</td>
-                <td>{{ rule.gateway }}</td>
-                <td>{{ rule.port }}</td>
+              <tr [class.loop-row]="isLoopingRule(rule, $index)">
+                <td>{{ rule.destination }}</td>
+                <td>{{ rule.nextHop }}</td>
+                <td>{{ rule.interface }}</td>
                 <td>
                   <button class="delete-btn" (click)="removeRule($index)">❌</button>
                 </td>
@@ -102,7 +100,7 @@
 
   <div class="router-viz glass-panel">
     <h4>Packet Queue Visualization</h4>
-    
+
     <div class="ports-container">
       <div class="port wan">
         <span class="port-lbl">Port 1 (WAN)</span>
@@ -121,17 +119,16 @@
     <div class="core-hub glow-border" [class.looping]="alarmActive()">
       <div class="hub-title">DPDK CORE</div>
       <div class="hub-desc">Packet Forwarding Hub</div>
-      
+
       @if (alarmActive()) {
         <div class="alarm-text glow-text">🔥 PACKET STORM DETECTED 🔥</div>
       }
     </div>
 
-    <!-- Animated Packets overlay -->
     <div class="packets-track-layer">
       @for (pkt of packets(); track pkt.id) {
-        <div 
-          class="packet-dot" 
+        <div
+          class="packet-dot"
           [ngClass]="[pkt.status]"
           [style.left.%]="pkt.status === 'looping' ? null : pkt.position"
           [style.top.%]="pkt.status === 'looping' ? null : 50">

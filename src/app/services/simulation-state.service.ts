@@ -117,4 +117,8 @@ export class SimulationStateService {
   // --- System ---
   public readonly isSystemCrashed = signal<boolean>(false);
   public readonly activeTab = signal<string>('gossip');
+
+  // --- Terminal ---
+  public readonly commandHistory = signal<string[]>([]);
+  public readonly routeInjectRequested = signal<boolean>(false);
 }
