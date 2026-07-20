@@ -74,6 +74,9 @@ export class GossipVisualizerComponent implements OnInit, OnDestroy, AfterViewIn
   private setupNodes() {
     const rawProjects = this.dataService.projects();
     const skills = this.dataService.skills();
+    const bogaziciEntries = this.dataService
+      .education()
+      .filter((e) => e.institution === 'Boğaziçi University');
 
     this.nodes = [
       {
@@ -95,10 +98,9 @@ export class GossipVisualizerComponent implements OnInit, OnDestroy, AfterViewIn
         label: 'Boğaziçi',
         category: 'education',
         title: 'Boğaziçi University',
-        body: [
-          'B.S. Industrial Engineering (2015 - 2019)',
-          'Specialized in operations research, algorithmic optimization, and system simulation.',
-        ],
+        body: bogaziciEntries.map(
+          (e) => `${e.degree} ${e.field} (${e.startYear} - ${e.endYear})`,
+        ),
         x: 0,
         y: 0,
         vx: 0,
@@ -112,10 +114,7 @@ export class GossipVisualizerComponent implements OnInit, OnDestroy, AfterViewIn
         label: 'TNG',
         category: 'education',
         title: 'TNG Technology Consulting',
-        body: [
-          'Consultant & Software Engineer (2021 - Present)',
-          'Providing elite software consulting services in Munich, Germany, focusing on complex C++ backends, low-latency architectures, and high-performance network stacks.',
-        ],
+        body: [this.dataService.currentRole()],
         x: 0,
         y: 0,
         vx: 0,

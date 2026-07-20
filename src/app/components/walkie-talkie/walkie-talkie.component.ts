@@ -120,7 +120,7 @@ export class WalkieTalkieComponent implements OnDestroy {
       case 3:
         return 'ADVICE NODE: "Affirmative. My advice for software developers: don\'t run away from systems code. Understanding assembly, memory allocations, and OS kernels makes you a better coder. Over."';
       case 4:
-        return 'LOW-LEVEL NODE: "Understood. High-performance C++ and DPDK bypass the kernel for insane packet rates. I love squeezeing out every nanosecond of performance. Over."';
+        return 'LOW-LEVEL NODE: "Understood. My academic work in DPDK and embedded C++ taught me to respect every nanosecond. These days I squeeze performance out of Angular templates and Python pipelines, but the low-level roots run deep. Over."';
       default:
         return 'CARRIER ERROR: Frequency out of range. Static...';
     }
