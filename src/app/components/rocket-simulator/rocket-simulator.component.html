@@ -139,9 +139,33 @@
           </span>
         </div>
         <div class="dial">
+          <span class="label">STAGE</span>
+          <span class="val glow-text">{{ activeStage() + 1 }}/{{ stages().length }}</span>
+        </div>
+        <div class="dial">
           <span class="label">STATUS</span>
           <span class="val" [ngClass]="flightState()">{{ flightState() | uppercase }}</span>
         </div>
+        <div class="dial">
+          <span class="label">EFFICIENCY</span>
+          <span class="val glow-text">{{ efficiencyRatingComputed() }}%</span>
+        </div>
+      </div>
+
+      <div class="trajectory-arc">
+        <div class="arc-title">FLIGHT PATH</div>
+        <svg class="arc-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <line x1="0" y1="100" x2="100" y2="100" stroke="var(--border-glass)" stroke-width="0.5" />
+          <line x1="0" y1="0" x2="0" y2="100" stroke="var(--border-glass)" stroke-width="0.5" />
+          <path [attr.d]="trajectoryPath()" class="arc-path" />
+          @if (trajectoryPoints().length > 0) {
+            <circle
+              [attr.cx]="(trajectoryPoints()[trajectoryPoints().length - 1].x / maxTrajectoryX()) * 100"
+              [attr.cy]="100 - (trajectoryPoints()[trajectoryPoints().length - 1].y / maxTrajectoryY()) * 100"
+              r="1.2"
+              class="arc-marker" />
+          }
+        </svg>
       </div>
     </div>
   </div>
