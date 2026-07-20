@@ -3,7 +3,7 @@
     <div class="canvas-header">
       <div class="header-info">
         <h3>Gossip Network Graph</h3>
-        <p>Interactive peer-to-peer gossip protocol simulation. Click nodes to spread data, click links to partition, shift-click a node to fail it.</p>
+        <p>Interactive peer-to-peer gossip protocol. The mesh does NOT auto-run — you drive every round.</p>
       </div>
       <div class="header-stats">
         <span class="badge glow-border">
@@ -26,6 +26,18 @@
       @if (isPartitioned()) {
         <div class="partition-banner">⚠️ NETWORK PARTITIONED — {{ partitions().length }} COMPONENTS</div>
       }
+    </div>
+
+    <div class="interactions-bar" role="region" aria-label="How to interact with the gossip mesh">
+      <span class="interaction"><span class="key">🖱️ Click node</span> infect / activate</span>
+      <span class="sep">·</span>
+      <span class="interaction"><span class="key">Click link</span> sever / partition</span>
+      <span class="sep">·</span>
+      <span class="interaction"><span class="key">Shift+click node</span> fail node</span>
+      <span class="sep">·</span>
+      <span class="interaction"><span class="key">📡 Spread Gossip</span> advance one round</span>
+      <span class="sep">·</span>
+      <span class="interaction"><span class="key">🔄 Anti-Entropy</span> full sync</span>
     </div>
 
     <div class="canvas-footer">

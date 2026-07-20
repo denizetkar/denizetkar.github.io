@@ -326,4 +326,39 @@ describe('GossipVisualizerComponent', () => {
   it('exposes simState as protected for template access', () => {
     expect((fixture as any).simState).toBe(simState);
   });
+
+  describe('injectEpidemic (user-driven tick)', () => {
+    it('Given fresh mesh, When injectEpidemic called once, Then tickCount advances by exactly 1', () => {
+      const before = (fixture as any).tickCount();
+      (fixture as any).injectEpidemic();
+      expect((fixture as any).tickCount()).toBe(before + 1);
+    });
+
+    it('Given fresh mesh with bio node infected, When injectEpidemic, Then messagesSent increments (rumor propagates)', () => {
+      const before = (fixture as any).messagesSent();
+      (fixture as any).injectEpidemic();
+      expect((fixture as any).messagesSent()).toBeGreaterThan(before);
+    });
+
+    it('Given fresh mesh, When injectEpidemic called twice in a row, Then tickCount is 2', () => {
+      (fixture as any).injectEpidemic();
+      (fixture as any).injectEpidemic();
+      expect((fixture as any).tickCount()).toBe(2);
+    });
+
+    it('Given fresh mesh, When no user action, Then protocol does NOT auto-tick (messagesSent stays 0)', () => {
+      expect((fixture as any).messagesSent()).toBe(0);
+      expect((fixture as any).tickCount()).toBe(0);
+    });
+
+    it('Given bio node rumor cleared, When injectEpidemic, Then bio node re-infected and protocol advances', () => {
+      const nodes: ProtocolNode[] = (fixture as any).nodes;
+      const bio = nodes.find((n) => n.id === 'bio')!;
+      bio.messages.clear();
+      bio.state = 'idle';
+      (fixture as any).injectEpidemic();
+      expect(bio.messages.has('rumor')).toBe(true);
+      expect((fixture as any).tickCount()).toBe(1);
+    });
+  });
 });

@@ -306,8 +306,6 @@ export class GossipVisualizerComponent implements OnInit, OnDestroy, AfterViewIn
   private canvasWidth = 800;
   private canvasHeight = 450;
   private ctx!: CanvasRenderingContext2D;
-  private lastTickTime = 0;
-  private readonly tickIntervalMs = 800;
   private winAchievementFired = false;
   private argSolvedFired = false;
 
@@ -547,31 +545,20 @@ export class GossipVisualizerComponent implements OnInit, OnDestroy, AfterViewIn
       }
     }
 
-    // 3. Protocol tick at fixed interval.
-    const now = Date.now();
-    if (now - this.lastTickTime >= this.tickIntervalMs) {
-      this.lastTickTime = now;
-      const mode = this.simState.gossipMode();
-      const stats = this.protocol.tick(this.nodes, this.links, mode);
-      this.packets.push(...this.collectVisualPackets());
-      // Update partition detection + metrics.
+    // 3. Protocol advances only on explicit user click (injectEpidemic); render loop keeps canvas alive.
+    this.ngZone.run(() => {
+      const conv = this.protocol.calculateConvergence(this.nodes);
+      this.simState.convergencePercent.set(conv);
+      const infected = this.nodes.filter(
+        (n) => !n.failed && n.messages.has(this.protocol.rumorId),
+      ).length;
+      this.infectionCount.set(infected);
       const components = this.protocol.detectPartition(this.nodes, this.links);
       const liveComponents = components.filter((c) => c.length > 0);
-      this.ngZone.run(() => {
-        this.messagesSent.update((n) => n + stats.messagesSent);
-        this.tickCount.update((n) => n + 1);
-        const conv = this.protocol.calculateConvergence(this.nodes);
-        this.simState.convergencePercent.set(conv);
-        const infected = this.nodes.filter(
-          (n) => !n.failed && n.messages.has(this.protocol.rumorId),
-        ).length;
-        this.infectionCount.set(infected);
-        this.partitions.set(liveComponents);
-        this.isPartitioned.set(liveComponents.length > 1);
-        this.simState.gossipPackets.set([...this.packets]);
-        this.checkWinCondition();
-      });
-    }
+      this.partitions.set(liveComponents);
+      this.isPartitioned.set(liveComponents.length > 1);
+      this.simState.gossipPackets.set([...this.packets]);
+    });
   }
 
   /** Generate visual packets for newly-infected nodes this frame. */
@@ -807,15 +794,33 @@ export class GossipVisualizerComponent implements OnInit, OnDestroy, AfterViewIn
   }
 
   protected injectEpidemic(): void {
-    // Infect a random idle node — or, if all are infected, run anti-entropy.
-    const idle = this.nodes.filter((n) => !n.failed && !n.messages.has(this.protocol.rumorId));
-    if (idle.length > 0) {
-      const target = idle[Math.floor(Math.random() * idle.length)]!;
-      this.infectNode(target);
-    } else {
-      this.protocol.runAntiEntropy(this.nodes, 1);
+    // Ensure the rumor source (bio) is infected on the very first spread
+    // so the user can advance the protocol even before clicking a node.
+    const bioNode = this.nodes.find((n) => n.id === 'bio');
+    if (bioNode && !bioNode.failed && !bioNode.messages.has(this.protocol.rumorId)) {
+      bioNode.messages.add(this.protocol.rumorId);
+      bioNode.state = bioNode.state === 'idle' ? 'infected' : bioNode.state;
+      bioNode.infectionTime = Date.now();
     }
-    this.syncSimState();
+    const mode = this.simState.gossipMode();
+    const stats = this.protocol.tick(this.nodes, this.links, mode);
+    this.packets.push(...this.collectVisualPackets());
+    this.ngZone.run(() => {
+      this.messagesSent.update((n) => n + stats.messagesSent);
+      this.tickCount.update((n) => n + 1);
+      const conv = this.protocol.calculateConvergence(this.nodes);
+      this.simState.convergencePercent.set(conv);
+      const infected = this.nodes.filter(
+        (n) => !n.failed && n.messages.has(this.protocol.rumorId),
+      ).length;
+      this.infectionCount.set(infected);
+      const components = this.protocol.detectPartition(this.nodes, this.links);
+      const liveComponents = components.filter((c) => c.length > 0);
+      this.partitions.set(liveComponents);
+      this.isPartitioned.set(liveComponents.length > 1);
+      this.simState.gossipPackets.set([...this.packets]);
+      this.checkWinCondition();
+    });
   }
 
   protected runAntiEntropy(): void {
