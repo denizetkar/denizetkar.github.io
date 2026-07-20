@@ -20,8 +20,8 @@
       @for (line of history(); track $index) {
         <div class="log-line" [ngClass]="line.type">
           @if (line.type === 'input') {
-            <span class="prompt">deniz&commat;portfolio:~$</span>
-            <span class="command-text">{{ line.text.substring(18) }}</span>
+            <span class="prompt">{{ line.prompt }}</span>
+            <span class="command-text">{{ line.command }}</span>
           } @else {
             <span class="output-text">{{ line.text }}</span>
           }
@@ -30,7 +30,7 @@
     </div>
     
     <div class="input-line">
-      <span class="prompt">deniz&commat;portfolio:~$</span>
+      <span class="prompt">{{ currentPrompt() }}</span>
       <input 
         #cmdInput
         type="text" 

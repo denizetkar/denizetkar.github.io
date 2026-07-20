@@ -10,6 +10,8 @@ interface TerminalLine {
   text: string;
   type: 'input' | 'output' | 'error' | 'success' | 'system';
   isHtml?: boolean;
+  prompt?: string;
+  command?: string;
 }
 
 type VfsNodeType = 'dir' | 'file';
@@ -27,17 +29,47 @@ interface ParseResult {
   flags: Record<string, string | boolean>;
 }
 
-const PROMPT = 'deniz@portfolio:~$ ';
+const PROMPT_USER = 'deniz';
+const PROMPT_HOST = 'portfolio';
 const HOME = '/home/deniz';
+
+const ENV_VARS: Record<string, string> = {
+  HOME,
+  USER: 'deniz',
+  SHELL: '/bin/bash',
+  PATH: '/usr/bin:/bin',
+  PS1: `${PROMPT_USER}@${PROMPT_HOST}:\\w$ `,
+};
 
 const VALUE_FLAGS = new Set([
   'gw', 'port', 'thrust', 'fuel', 'pitch', 'stage', 'code', 'count',
-  'tune', 'channel', 'mode', 'partition', 'fail',
+  'tune', 'channel', 'mode', 'partition', 'fail', 'name', 'type',
 ]);
+
+const USR_BIN_COMMANDS = [
+  'ls', 'cd', 'cat', 'tree', 'find', 'echo', 'pwd', 'whoami', 'hostname',
+  'date', 'uname', 'env', 'printenv', 'wc', 'head', 'tail', 'grep', 'which',
+  'man', 'history', 'clear', 'reboot',
+];
+
+const MAN_PAGES: Record<string, string> = {
+  ls: 'LS(1)\n\nNAME\n    ls - list directory contents\n\nSYNOPSIS\n    ls [OPTION]... [FILE]...\n\nDESCRIPTION\n    List information about the FILEs (the current directory by default).\n    Options: -a (all), -l (long format).',
+  cd: 'CD(1)\n\nNAME\n    cd - change the shell working directory\n\nSYNOPSIS\n    cd [dir]\n\nDESCRIPTION\n    Change the current directory to DIR. With no DIR, go to $HOME.\n    Special: "cd -" returns to $OLDPWD, "cd ~" goes home.',
+  cat: 'CAT(1)\n\nNAME\n    cat - concatenate files and print on the standard output\n\nSYNOPSIS\n    cat [OPTION]... [FILE]...\n\nDESCRIPTION\n    Options: -n (number all output lines).',
+  echo: 'ECHO(1)\n\nNAME\n    echo - display a line of text\n\nSYNOPSIS\n    echo [STRING]...\n\nDESCRIPTION\n    Print the STRINGs. Supports $VAR expansion.\n    Option: -n (do not output the trailing newline).',
+  pwd: 'PWD(1)\n\nNAME\n    pwd - print name of current/working directory\n\nSYNOPSIS\n    pwd',
+  grep: 'GREP(1)\n\nNAME\n    grep - print lines matching a pattern\n\nSYNOPSIS\n    grep PATTERN [FILE]',
+  find: 'FIND(1)\n\nNAME\n    find - search for files in a directory hierarchy\n\nSYNOPSIS\n    find [path] [-name PATTERN] [-type f|d]',
+};
 
 export class CommandParser {
   static parse(input: string): ParseResult {
-    const tokens = input.trim().split(/\s+/).filter((t) => t.length > 0);
+    const tokens = input.trim().split(/\s+/).filter((t) => t.length > 0).map((t) => {
+      if (t.length >= 2 && ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'")))) {
+        return t.slice(1, -1);
+      }
+      return t;
+    });
     const command = tokens.shift()?.toLowerCase() ?? '';
     const args: string[] = [];
     const flags: Record<string, string | boolean> = {};
@@ -50,12 +82,30 @@ export class CommandParser {
           flags[body.slice(0, eq)] = body.slice(eq + 1);
         } else if (VALUE_FLAGS.has(body)) {
           const next = tokens[i + 1];
-          if (next !== undefined && !next.startsWith('--')) {
+          if (next !== undefined && !next.startsWith('-')) {
             flags[body] = next;
             i++;
           } else {
             flags[body] = true;
           }
+        } else {
+          flags[body] = true;
+        }
+      } else if (token.startsWith('-') && token.length > 1 && !isNumeric(token)) {
+        const body = token.slice(1);
+        const eq = body.indexOf('=');
+        if (eq !== -1) {
+          flags[body.slice(0, eq)] = body.slice(eq + 1);
+        } else if (VALUE_FLAGS.has(body)) {
+          const next = tokens[i + 1];
+          if (next !== undefined && !next.startsWith('-')) {
+            flags[body] = next;
+            i++;
+          } else {
+            flags[body] = true;
+          }
+        } else if (body.length > 1) {
+          for (const ch of body) flags[ch] = true;
         } else {
           flags[body] = true;
         }
@@ -67,12 +117,19 @@ export class CommandParser {
   }
 }
 
+function isNumeric(s: string): boolean {
+  return /^-?\d+(\.\d+)?$/.test(s);
+}
+
 export class VirtualFileSystem {
   private root: VfsNode;
   private cwdPath = HOME;
+  private oldCwdPath = HOME;
   private readonly achievements: AchievementService;
+  private readonly dataService: DataService;
 
-  constructor(private readonly dataService: DataService, achievements: AchievementService) {
+  constructor(dataService: DataService, achievements: AchievementService) {
+    this.dataService = dataService;
     this.achievements = achievements;
     this.root = this.buildTree();
   }
@@ -100,15 +157,41 @@ export class VirtualFileSystem {
       projectsDir,
       { name: 'contact.vcf', type: 'file', content: contact },
       { name: 'achievements.json', type: 'file', content: this.mirrorAchievements() },
+      { name: '.bashrc', type: 'file', content: `export PS1='deniz@portfolio:\\w$ '\nexport HOME=${HOME}\nexport SHELL=/bin/bash` },
+      { name: '.bash_history', type: 'file', content: 'ls\ncat resume.txt\nhelp\npwd' },
+      { name: '.config', type: 'dir', children: [] },
+      { name: '.secrets', type: 'dir', children: secretsChildren },
     ];
-    if (this.achievements.isUnlocked('apogee-reached')) {
-      homeChildren.push({ name: '.secrets', type: 'dir', children: secretsChildren });
-    }
+    const etcChildren: VfsNode[] = [
+      { name: 'hostname', type: 'file', content: 'portfolio' },
+      { name: 'os-release', type: 'file', content: 'NAME="DenizOS"\nVERSION="22.0"\nID=denizos' },
+      { name: 'profile.d', type: 'dir', children: [] },
+    ];
+    const logChildren: VfsNode[] = [
+      { name: 'syslog', type: 'file', content: [
+        'Jul 20 12:00:01 portfolio gossipd[42]: mesh initialized',
+        'Jul 20 12:00:02 portfolio rocketd[7]: prelaunch standby',
+        'Jul 20 12:00:03 portfolio routerd[11]: routing table loaded',
+        'Jul 20 12:00:04 portfolio radiod[5]: channel 1 idle',
+      ].join('\n') },
+      { name: 'auth.log', type: 'file', content: 'Jul 20 12:00:01 portfolio sshd[1]: Connection from 127.0.0.1' },
+    ];
+    const usrBinChildren: VfsNode[] = USR_BIN_COMMANDS.map((c) => ({
+      name: c, type: 'file' as VfsNodeType, content: '',
+    }));
     return {
       name: '', type: 'dir',
       children: [
         { name: 'home', type: 'dir', children: [
           { name: 'deniz', type: 'dir', children: homeChildren },
+        ]},
+        { name: 'etc', type: 'dir', children: etcChildren },
+        { name: 'var', type: 'dir', children: [
+          { name: 'log', type: 'dir', children: logChildren },
+        ]},
+        { name: 'tmp', type: 'dir', children: [] },
+        { name: 'usr', type: 'dir', children: [
+          { name: 'bin', type: 'dir', children: usrBinChildren },
         ]},
       ],
     };
@@ -120,9 +203,17 @@ export class VirtualFileSystem {
 
   rebuild(): void { this.root = this.buildTree(); }
   cwd(): string { return this.cwdPath; }
+  oldCwd(): string { return this.oldCwdPath; }
+
+  private expandUser(path: string): string {
+    if (path === '~') return HOME;
+    if (path.startsWith('~/')) return `${HOME}${path.slice(1)}`;
+    return path;
+  }
 
   resolve(path: string): VfsNode | null {
-    const absolute = this.normalize(path);
+    const expanded = this.expandUser(path);
+    const absolute = this.normalize(expanded);
     const parts = absolute.split('/').filter((p) => p.length > 0);
     let current: VfsNode = this.root;
     for (const part of parts) {
@@ -145,17 +236,44 @@ export class VirtualFileSystem {
     return `/${parts.join('/')}`;
   }
 
+  private isSecretPath(path: string): boolean {
+    return this.normalize(this.expandUser(path)).includes('/.secrets');
+  }
+
   ls(path?: string): string[] {
     const target = this.resolve(path ?? this.cwdPath);
     if (!target || target.type !== 'dir' || !target.children) return [];
+    if (path !== undefined && this.isSecretPath(path) && !this.achievements.isUnlocked('apogee-reached')) {
+      return [];
+    }
     return target.children.map((c) => (c.type === 'dir' ? `${c.name}/` : c.name));
   }
 
+  lsNodes(path?: string): VfsNode[] {
+    const target = this.resolve(path ?? this.cwdPath);
+    if (!target || target.type !== 'dir' || !target.children) return [];
+    if (path !== undefined && this.isSecretPath(path) && !this.achievements.isUnlocked('apogee-reached')) {
+      return [];
+    }
+    return target.children.slice();
+  }
+
   cd(path: string): { ok: boolean; error?: string } {
-    const target = this.resolve(path);
-    if (!target) return { ok: false, error: `cd: no such directory: ${path}` };
+    if (path === '-') {
+      const prev = this.oldCwdPath;
+      const target = this.resolve(prev);
+      if (!target) return { ok: false, error: `cd: no such file or directory: ${prev}` };
+      if (target.type !== 'dir') return { ok: false, error: `cd: not a directory: ${prev}` };
+      this.oldCwdPath = this.cwdPath;
+      this.cwdPath = prev;
+      return { ok: true };
+    }
+    const expanded = this.expandUser(path);
+    const target = this.resolve(expanded);
+    if (!target) return { ok: false, error: `cd: no such file or directory: ${path}` };
     if (target.type !== 'dir') return { ok: false, error: `cd: not a directory: ${path}` };
-    this.cwdPath = this.normalize(path);
+    this.oldCwdPath = this.cwdPath;
+    this.cwdPath = this.normalize(expanded);
     return { ok: true };
   }
 
@@ -169,8 +287,7 @@ export class VirtualFileSystem {
   read(path: string): { ok: boolean; error?: string } {
     const target = this.resolve(path);
     if (!target) return { ok: false, error: `no such file or directory: ${path}` };
-    const normalized = this.normalize(path);
-    if (normalized.includes('/.secrets') && !this.achievements.isUnlocked('apogee-reached')) {
+    if (this.isSecretPath(path) && !this.achievements.isUnlocked('apogee-reached')) {
       return { ok: false, error: 'permission denied: .secrets is locked' };
     }
     return { ok: true };
@@ -202,6 +319,14 @@ export class VirtualFileSystem {
     return results;
   }
 
+  findAt(startPath: string, opts: { name?: string; type?: 'f' | 'd' }): string[] {
+    const start = this.resolve(startPath);
+    if (!start) return [];
+    const results: string[] = [];
+    this.walkFindOpts(start, startPath === '/' ? '' : startPath, opts, results);
+    return results;
+  }
+
   private walkFind(node: VfsNode, currentPath: string, name: string, results: string[]): void {
     if (node.name.includes(name)) {
       const fullPath = node.name === '' ? currentPath : `${currentPath}/${node.name}`;
@@ -211,6 +336,27 @@ export class VirtualFileSystem {
       const childPath = node.name === '' ? currentPath : `${currentPath}/${node.name}`;
       for (const child of node.children) {
         this.walkFind(child, childPath, name, results);
+      }
+    }
+  }
+
+  private matchesName(pattern: string, name: string): boolean {
+    if (!pattern.includes('*')) return name.includes(pattern);
+    const regex = new RegExp(pattern.replace(/\./g, '\\.').replace(/\*/g, '.*'));
+    return regex.test(name);
+  }
+
+  private walkFindOpts(node: VfsNode, currentPath: string, opts: { name?: string; type?: 'f' | 'd' }, results: string[]): void {
+    const fullPath = node.name === '' ? currentPath : `${currentPath}/${node.name}`;
+    const typeOk = !opts.type || (opts.type === 'd' ? node.type === 'dir' : node.type === 'file');
+    const nameOk = !opts.name || this.matchesName(opts.name, node.name);
+    if (node.name !== '' && typeOk && nameOk) {
+      results.push(fullPath);
+    }
+    if (node.type === 'dir' && node.children) {
+      const childPath = node.name === '' ? currentPath : `${currentPath}/${node.name}`;
+      for (const child of node.children) {
+        this.walkFindOpts(child, childPath, opts, results);
       }
     }
   }
@@ -242,6 +388,8 @@ export class TerminalComponent implements AfterViewChecked {
     this.achievements.achievements().length,
   );
 
+  protected readonly currentPrompt = computed<string>(() => this.promptString());
+
   protected readonly history = signal<TerminalLine[]>([
     { text: 'Welcome to Deniz\'s Interactive CLI (v2.0.0).', type: 'system' },
     { text: 'Type "help" for a list of available commands.', type: 'system' },
@@ -259,6 +407,17 @@ export class TerminalComponent implements AfterViewChecked {
     } catch {
       // View not yet ready (e.g. in tests without a host element).
     }
+  }
+
+  protected promptString(): string {
+    const cwd = this.vfs.cwd();
+    let display = cwd;
+    if (cwd === HOME) {
+      display = '~';
+    } else if (cwd.startsWith(`${HOME}/`)) {
+      display = `~${cwd.slice(HOME.length)}`;
+    }
+    return `${PROMPT_USER}@${PROMPT_HOST}:${display}$ `;
   }
 
   protected handleKeyDown(event: KeyboardEvent) {
@@ -300,7 +459,7 @@ export class TerminalComponent implements AfterViewChecked {
     } else if (matches.length > 1) {
       this.history.update((h) => [
         ...h,
-        { text: `${PROMPT}${this.inputValue()}`, type: 'input' },
+        { text: '', type: 'input', prompt: this.promptString(), command: this.inputValue() },
         { text: matches.join('   '), type: 'system' },
       ]);
     }
@@ -311,6 +470,8 @@ export class TerminalComponent implements AfterViewChecked {
       'help', 'about', 'skills', 'projects', 'contact', 'theme', 'clear', 'reboot', 'sudo',
       'launch', 'route', 'gossip', 'radio', 'tab', 'achievement', 'solve',
       'ls', 'cd', 'cat', 'tree', 'find',
+      'echo', 'pwd', 'whoami', 'hostname', 'date', 'uname', 'env', 'printenv',
+      'wc', 'head', 'tail', 'grep', 'which', 'man', 'history',
     ];
   }
 
@@ -318,7 +479,7 @@ export class TerminalComponent implements AfterViewChecked {
   private printLine(text: string, type: TerminalLine['type'] = 'output'): void { this.print([{ text, type }]); }
 
   protected executeCommand(cmdStr: string) {
-    this.history.update((h) => [...h, { text: `${PROMPT}${cmdStr}`, type: 'input' }]);
+    this.history.update((h) => [...h, { text: '', type: 'input', prompt: this.promptString(), command: cmdStr }]);
     this.simState.commandHistory.update((h) => [...h, cmdStr]);
     this.historyIndex = -1;
     this.inputValue.set('');
@@ -328,7 +489,7 @@ export class TerminalComponent implements AfterViewChecked {
 
   private dispatch(p: ParseResult): void {
     switch (p.command) {
-      case 'help': this.cmdHelp(); break;
+      case 'help': this.cmdHelp(p.flags['help'] === true); break;
       case 'about': this.cmdAbout(); break;
       case 'skills': this.cmdSkills(); break;
       case 'projects': this.cmdProjects(p.args[0]); break;
@@ -337,11 +498,26 @@ export class TerminalComponent implements AfterViewChecked {
       case 'clear': this.history.set([]); break;
       case 'reboot': this.cmdReboot(); break;
       case 'sudo': this.printLine('deniz is not in the sudoers file. This incident will be reported.', 'error'); break;
-      case 'ls': this.cmdLs(p.args[0]); break;
+      case 'ls': this.cmdLs(p.flags, p.args); break;
       case 'cd': this.cmdCd(p.args[0]); break;
-      case 'cat': this.cmdCat(p.args[0]); break;
+      case 'cat': this.cmdCat(p.flags, p.args); break;
       case 'tree': this.cmdTree(p.args[0]); break;
-      case 'find': this.cmdFind(p.args[0]); break;
+      case 'find': this.cmdFind(p.flags, p.args); break;
+      case 'echo': this.cmdEcho(p.flags, p.args); break;
+      case 'pwd': this.cmdPwd(); break;
+      case 'whoami': this.printLine('deniz'); break;
+      case 'hostname': this.printLine('portfolio'); break;
+      case 'date': this.printLine(new Date().toUTCString()); break;
+      case 'uname': this.cmdUname(p.flags); break;
+      case 'env': this.cmdEnv(); break;
+      case 'printenv': this.cmdEnv(); break;
+      case 'wc': this.cmdWc(p.flags, p.args); break;
+      case 'head': this.cmdHead(p.flags, p.args); break;
+      case 'tail': this.cmdTail(p.flags, p.args); break;
+      case 'grep': this.cmdGrep(p.args); break;
+      case 'which': this.cmdWhich(p.args); break;
+      case 'man': this.cmdMan(p.args[0]); break;
+      case 'history': this.cmdHistory(); break;
       case 'launch': this.cmdLaunch(p.flags, p.args); break;
       case 'route': this.cmdRoute(p.flags, p.args); break;
       case 'gossip': this.cmdGossip(p.flags, p.args); break;
@@ -353,7 +529,14 @@ export class TerminalComponent implements AfterViewChecked {
     }
   }
 
-  private cmdHelp(): void {
+  private cmdHelp(showUsage: boolean): void {
+    if (showUsage) {
+      this.print([
+        { text: 'Usage: help [command]', type: 'output' },
+        { text: 'Show help for a command. Without args, lists all commands.', type: 'output' },
+      ]);
+      return;
+    }
     const active = this.simState.activeTab();
     const lines: TerminalLine[] = [
       { text: `Available commands (active widget: ${active}):`, type: 'success' },
@@ -370,7 +553,11 @@ export class TerminalComponent implements AfterViewChecked {
       { text: '  tab [gossip|rocket|router|radio|portfolio]', type: 'output' },
       { text: '  achievement --list  - List unlocked achievements', type: 'output' },
       { text: '  solve SIGMA-13      - Resolve the ARG (requires gossip preconditions)', type: 'output' },
-      { text: '  ls / cd / cat / tree / find  - Virtual file system', type: 'output' },
+      { text: '  ls [-l|-a|-la] [path...] / cd [-|~|path] / cat [-n] file... / tree [path]', type: 'output' },
+      { text: '  find [path] [-name PATTERN] [-type f|d]', type: 'output' },
+      { text: '  echo [text] / pwd / whoami / hostname / date / uname [-a]', type: 'output' },
+      { text: '  env / printenv / wc [-l] file / head [-n N] file / tail [-n N] file', type: 'output' },
+      { text: '  grep PATTERN file / which command / man command / history', type: 'output' },
       { text: '  clear | reboot | sudo', type: 'output' },
     ];
     if (this.achievements.isUnlocked('apogee-reached')) {
@@ -437,10 +624,38 @@ export class TerminalComponent implements AfterViewChecked {
     }
   }
 
-  private cmdLs(path?: string): void {
-    const entries = this.vfs.ls(path);
-    if (entries.length === 0) { this.printLine('ls: no such directory', 'error'); return; }
-    this.printLine(entries.join('   '));
+  private cmdLs(flags: Record<string, string | boolean>, args: string[]): void {
+    const longFmt = flags['l'] === true || flags['la'] === true || flags['al'] === true;
+    const showAll = flags['a'] === true || flags['la'] === true || flags['al'] === true;
+    const paths = args.length > 0 ? args : [undefined as string | undefined];
+    const multi = paths.length > 1;
+    let firstOutput = true;
+    for (const p of paths) {
+      const guard = p !== undefined ? this.vfs.read(p) : { ok: true };
+      if (!guard.ok) { this.printLine(`ls: cannot access '${p}': ${guard.error}`, 'error'); continue; }
+      const nodes = this.vfs.lsNodes(p);
+      if (nodes.length === 0 && !multi) {
+        if (p !== undefined) this.printLine(`ls: cannot access '${p}': no such directory`, 'error');
+        continue;
+      }
+      if (multi && !firstOutput) { this.printLine(''); }
+      if (multi) { this.printLine(`${p ?? '.'}:`); }
+      firstOutput = false;
+      let visible = nodes;
+      if (!showAll) {
+        visible = nodes.filter((n) => !n.name.startsWith('.'));
+      }
+      if (longFmt) {
+        for (const n of visible) {
+          const perms = n.type === 'dir' ? 'drwxr-xr-x' : '-rw-r--r--';
+          const size = n.type === 'dir' ? 4096 : (n.content?.length ?? 0);
+          this.printLine(`${perms} 2 deniz deniz ${String(size).padStart(5)} Jul 20 12:00 ${n.name}${n.type === 'dir' ? '/' : ''}`);
+        }
+      } else {
+        const names = visible.map((n) => (n.type === 'dir' ? `${n.name}/` : n.name));
+        if (names.length > 0) this.printLine(names.join('   '));
+      }
+    }
   }
 
   private cmdCd(path?: string): void {
@@ -453,14 +668,29 @@ export class TerminalComponent implements AfterViewChecked {
     if (!r.ok) this.printLine(r.error!, 'error');
   }
 
-  private cmdCat(path?: string): void {
-    if (!path) { this.printLine('cat: missing file operand', 'error'); return; }
-    const guard = this.vfs.read(path);
-    if (!guard.ok) { this.printLine(guard.error!, 'error'); return; }
-    const r = this.vfs.cat(path);
-    if (!r.ok) { this.printLine(r.error!, 'error'); return; }
-    this.printLine(r.output ?? '');
-    if (path.includes('.secrets')) {
+  private cmdCat(flags: Record<string, string | boolean>, args: string[]): void {
+    if (args.length === 0) { this.printLine('cat: missing file operand', 'error'); return; }
+    const showNum = flags['n'] === true;
+    let triggeredSecret = false;
+    for (const path of args) {
+      const guard = this.vfs.read(path);
+      if (!guard.ok) { this.printLine(guard.error!, 'error'); continue; }
+      const r = this.vfs.cat(path);
+      if (!r.ok) { this.printLine(r.error!, 'error'); continue; }
+      const content = r.output ?? '';
+      if (showNum) {
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          this.printLine(`${String(i + 1).padStart(6)}\t${lines[i]}`);
+        }
+      } else {
+        this.printLine(content);
+      }
+      if (path.includes('.secrets')) {
+        triggeredSecret = true;
+      }
+    }
+    if (triggeredSecret) {
       this.achievements.unlock('hidden-command-found');
       this.printLine('[hidden command discovered — achievement unlocked]', 'system');
       this.vfs.rebuild();
@@ -473,11 +703,168 @@ export class TerminalComponent implements AfterViewChecked {
     this.printLine(out);
   }
 
-  private cmdFind(name?: string): void {
-    if (!name) { this.printLine('find: missing pattern', 'error'); return; }
-    const results = this.vfs.find(name);
-    if (results.length === 0) { this.printLine('find: no matches', 'system'); return; }
+  private cmdFind(flags: Record<string, string | boolean>, args: string[]): void {
+    const startPos = args.find((a) => !a.startsWith('-') && !a.includes('=')) ?? '.';
+    const nameVal = typeof flags['name'] === 'string' ? flags['name'] : undefined;
+    const typeVal = typeof flags['type'] === 'string' ? flags['type'] : undefined;
+    if (!nameVal && !typeVal) {
+      const results = this.vfs.find(startPos === '.' ? '' : startPos);
+      if (results.length === 0) { this.printLine('find: no matches', 'system'); return; }
+      this.printLine(results.join('\n'));
+      return;
+    }
+    const opts: { name?: string; type?: 'f' | 'd' } = {};
+    if (nameVal) opts.name = nameVal;
+    if (typeVal === 'f' || typeVal === 'd') opts.type = typeVal;
+    const results = this.vfs.findAt(startPos, opts);
+    if (results.length === 0) { this.printLine('', 'system'); return; }
     this.printLine(results.join('\n'));
+  }
+
+  private expandVars(text: string): string {
+    return text.replace(/\$(\w+)/g, (_, name: string) => {
+      if (name === 'PWD') return this.vfs.cwd();
+      return ENV_VARS[name] ?? `$${name}`;
+    });
+  }
+
+  private cmdEcho(flags: Record<string, string | boolean>, args: string[]): void {
+    const text = args.map((a) => this.expandVars(a)).join(' ');
+    if (flags['n'] === true) {
+      this.history.update((h) => [...h, { text, type: 'output' }]);
+    } else {
+      this.printLine(text);
+    }
+  }
+
+  private cmdPwd(): void {
+    this.printLine(this.vfs.cwd());
+  }
+
+  private cmdUname(flags: Record<string, string | boolean>): void {
+    if (flags['a'] === true) {
+      this.printLine('DenizOS portfolio 22.0 #1 SMP x86_64 GNU/Linux');
+    } else {
+      this.printLine('DenizOS');
+    }
+  }
+
+  private cmdEnv(): void {
+    this.print([
+      { text: `HOME=${ENV_VARS['HOME']}`, type: 'output' },
+      { text: `USER=${ENV_VARS['USER']}`, type: 'output' },
+      { text: `PWD=${this.vfs.cwd()}`, type: 'output' },
+      { text: `SHELL=${ENV_VARS['SHELL']}`, type: 'output' },
+      { text: `PATH=${ENV_VARS['PATH']}`, type: 'output' },
+      { text: `PS1=${ENV_VARS['PS1']}`, type: 'output' },
+    ]);
+  }
+
+  private cmdWc(flags: Record<string, string | boolean>, args: string[]): void {
+    const file = args[0];
+    if (!file) { this.printLine('wc: missing file operand', 'error'); return; }
+    const guard = this.vfs.read(file);
+    if (!guard.ok) { this.printLine(`wc: ${file}: ${guard.error}`, 'error'); return; }
+    const r = this.vfs.cat(file);
+    if (!r.ok) { this.printLine(`wc: ${file}: ${r.error}`, 'error'); return; }
+    const content = r.output ?? '';
+    const lines = content === '' ? 0 : content.split('\n').length;
+    const words = content.trim().split(/\s+/).filter((w) => w.length > 0).length;
+    const chars = content.length;
+    if (flags['l'] === true) {
+      this.printLine(`${lines} ${file}`);
+    } else {
+      this.printLine(`${lines} ${words} ${chars} ${file}`);
+    }
+  }
+
+  private cmdHead(flags: Record<string, string | boolean>, args: string[]): void {
+    let n = 10;
+    let file: string | undefined;
+    if (flags['n'] === true) {
+      const numArg = args.find((a) => isNumeric(a));
+      if (numArg !== undefined) {
+        n = Number(numArg);
+        file = args.find((a) => a !== numArg && !a.startsWith('-'));
+      } else {
+        file = args.find((a) => !a.startsWith('-'));
+      }
+    } else {
+      file = args.find((a) => !a.startsWith('-'));
+    }
+    if (!file) { this.printLine('head: missing file operand', 'error'); return; }
+    const guard = this.vfs.read(file);
+    if (!guard.ok) { this.printLine(`head: cannot open '${file}' for reading: ${guard.error}`, 'error'); return; }
+    const r = this.vfs.cat(file);
+    if (!r.ok) { this.printLine(`head: ${file}: ${r.error}`, 'error'); return; }
+    const lines = (r.output ?? '').split('\n');
+    this.printLine(lines.slice(0, n).join('\n'));
+  }
+
+  private cmdTail(flags: Record<string, string | boolean>, args: string[]): void {
+    let n = 10;
+    let file: string | undefined;
+    if (flags['n'] === true) {
+      const numArg = args.find((a) => isNumeric(a));
+      if (numArg !== undefined) {
+        n = Number(numArg);
+        file = args.find((a) => a !== numArg && !a.startsWith('-'));
+      } else {
+        file = args.find((a) => !a.startsWith('-'));
+      }
+    } else {
+      file = args.find((a) => !a.startsWith('-'));
+    }
+    if (!file) { this.printLine('tail: missing file operand', 'error'); return; }
+    const guard = this.vfs.read(file);
+    if (!guard.ok) { this.printLine(`tail: cannot open '${file}' for reading: ${guard.error}`, 'error'); return; }
+    const r = this.vfs.cat(file);
+    if (!r.ok) { this.printLine(`tail: ${file}: ${r.error}`, 'error'); return; }
+    const lines = (r.output ?? '').split('\n');
+    this.printLine(lines.slice(-n).join('\n'));
+  }
+
+  private cmdGrep(args: string[]): void {
+    const pattern = args[0];
+    const file = args[1];
+    if (!pattern) { this.printLine('grep: missing pattern', 'error'); return; }
+    if (!file) { this.printLine('grep: missing file operand', 'error'); return; }
+    const guard = this.vfs.read(file);
+    if (!guard.ok) { this.printLine(`grep: ${file}: ${guard.error}`, 'error'); return; }
+    const r = this.vfs.cat(file);
+    if (!r.ok) { this.printLine(`grep: ${file}: ${r.error}`, 'error'); return; }
+    const lines = (r.output ?? '').split('\n').filter((l) => l.includes(pattern));
+    if (lines.length === 0) { this.printLine('', 'system'); return; }
+    this.printLine(lines.join('\n'));
+  }
+
+  private cmdWhich(args: string[]): void {
+    if (args.length === 0) { this.printLine('which: missing operand', 'error'); return; }
+    for (const cmd of args) {
+      const node = this.vfs.resolve(`/usr/bin/${cmd}`);
+      if (node && node.type === 'file') {
+        this.printLine(`/usr/bin/${cmd}`);
+      } else {
+        this.printLine(`which: no ${cmd} in (/usr/bin:/bin)`, 'error');
+      }
+    }
+  }
+
+  private cmdMan(cmd?: string): void {
+    if (!cmd) { this.printLine('What manual page do you want?', 'error'); return; }
+    const page = MAN_PAGES[cmd];
+    if (page) {
+      this.printLine(page);
+    } else {
+      this.printLine(`No manual entry for ${cmd}`, 'error');
+    }
+  }
+
+  private cmdHistory(): void {
+    const hist = this.simState.commandHistory();
+    if (hist.length === 0) { this.printLine('', 'system'); return; }
+    const lines: TerminalLine[] = hist.map((cmd, i) => ({ text: `${String(i + 1).padStart(5)}  ${cmd}`, type: 'output' as const }));
+    this.print(lines);
   }
 
   private cmdLaunch(flags: Record<string, string | boolean>, args: string[]): void {
