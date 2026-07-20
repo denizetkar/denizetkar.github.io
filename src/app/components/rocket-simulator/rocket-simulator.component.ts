@@ -34,10 +34,11 @@ export interface StageDefinition {
 }
 
 export const STAGE_DEFINITIONS: StageDefinition[] = [
-  // Stage 1: booster — high thrust, lower Isp
-  { thrust: 220, dryMass: 80, fuelCapacity: 120, isp: 250 },
-  // Stage 2: sustainer — lower thrust, higher Isp
-  { thrust: 120, dryMass: 40, fuelCapacity: 90, isp: 320 },
+  // Stage 1: booster — high thrust, lower Isp.
+  // TWR at liftoff ≈ 2.28 (realistic sounding-rocket range 1.2–2.5).
+  { thrust: 34, dryMass: 800, fuelCapacity: 80, isp: 250 },
+  // Stage 2: sustainer — lower thrust, higher Isp.
+  { thrust: 13.5, dryMass: 600, fuelCapacity: 40, isp: 320 },
 ];
 
 export interface StageRuntimeState {
@@ -497,7 +498,7 @@ export class RocketSimulatorComponent implements OnInit, OnDestroy {
       this.flightStartTime = Date.now();
       this.intervalId = setInterval(() => {
         this.runPhysicsTick();
-      }, 16);
+      }, 100);
     }, 1500);
   }
 
