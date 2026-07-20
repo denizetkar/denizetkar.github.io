@@ -1,8 +1,29 @@
 import { TestBed } from '@angular/core/testing';
+import type { WritableSignal } from '@angular/core';
 import { TerminalComponent, VirtualFileSystem, CommandParser } from './terminal.component';
 import { SimulationStateService } from '../../services/simulation-state.service';
 import { AchievementService } from '../../services/achievement.service';
 import { DataService } from '../../services/data.service';
+
+interface TerminalLine {
+  text: string;
+  type: 'input' | 'output' | 'error' | 'success' | 'system';
+  isHtml?: boolean;
+}
+
+/**
+ * Test-only mirror of TerminalComponent's protected/private members
+ * (each member re-declared with the same type as on the component).
+ * `as unknown as TerminalHandle` re-exposes them to the spec without weakening
+ * their types — every member must exist on TerminalComponent itself.
+ */
+type TerminalHandle = {
+  historyIndex: number;
+  history: WritableSignal<TerminalLine[]>;
+  inputValue: WritableSignal<string>;
+  executeCommand(cmdStr: string): void;
+  handleKeyDown(event: KeyboardEvent): void;
+};
 
 describe('VirtualFileSystem', () => {
   let dataService: DataService;
@@ -127,8 +148,9 @@ describe('TerminalComponent', () => {
   });
 
   const run = (cmd: string) => {
-    (component as any).executeCommand(cmd);
-    return (component as any).history();
+    const h = component as unknown as TerminalHandle;
+    h.executeCommand(cmd);
+    return h.history();
   };
 
   it('persists command history in SimulationStateService (not a local array)', () => {
@@ -140,9 +162,10 @@ describe('TerminalComponent', () => {
   it('arrow-up recalls the previous command from the persistent history', () => {
     run('about');
     run('skills');
-    (component as any).historyIndex = -1;
-    (component as any).handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowUp' }));
-    expect((component as any).inputValue()).toBe('skills');
+    const h = component as unknown as TerminalHandle;
+    h.historyIndex = -1;
+    h.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowUp' }));
+    expect(h.inputValue()).toBe('skills');
   });
 
   it('launch sets rocketConfig fields and flightState to launching', () => {
@@ -203,7 +226,7 @@ describe('TerminalComponent', () => {
   it('achievement --list shows unlocked achievements', () => {
     achievements.unlock('apogee-reached');
     const lines = run('achievement --list');
-    const joined = lines.map((l: any) => l.text).join('\n');
+    const joined = lines.map((l: TerminalLine) => l.text).join('\n');
     expect(joined).toContain('apogee-reached');
   });
 
@@ -228,40 +251,42 @@ describe('TerminalComponent', () => {
 
   it('sudo returns the sudoers joke', () => {
     const lines = run('sudo');
-    const joined = lines.map((l: any) => l.text).join('\n');
+    const joined = lines.map((l: TerminalLine) => l.text).join('\n');
     expect(joined).toContain('not in the sudoers file');
   });
 
   it('clear empties the terminal history signal', () => {
     run('help');
     run('clear');
-    expect((component as any).history().length).toBe(0);
+    expect((component as unknown as TerminalHandle).history().length).toBe(0);
   });
 
   it('cat /home/deniz/.secrets/launch-codes.txt is a hidden command that unlocks hidden-command-found', () => {
     achievements.unlock('apogee-reached');
-    (component as any).rebuildVfs();
+    component.rebuildVfs();
     run('cat /home/deniz/.secrets/launch-codes.txt');
     expect(achievements.isUnlocked('hidden-command-found')).toBe(true);
   });
 
   it('help expands with new commands as achievements unlock', () => {
+    const h = component as unknown as TerminalHandle;
     run('clear');
     run('help');
-    const before = (component as any).history().map((l: any) => l.text).join('\n');
+    const before = h.history().map((l: TerminalLine) => l.text).join('\n');
     expect(before).not.toContain('launch-codes');
     achievements.unlock('apogee-reached');
     run('clear');
     run('help');
-    const after = (component as any).history().map((l: any) => l.text).join('\n');
+    const after = h.history().map((l: TerminalLine) => l.text).join('\n');
     expect(after).toContain('launch');
   });
 
   it('context-aware help mentions the active widget', () => {
     simState.activeTab.set('rocket');
+    const h = component as unknown as TerminalHandle;
     run('clear');
     run('help');
-    const joined = (component as any).history().map((l: any) => l.text).join('\n');
+    const joined = h.history().map((l: TerminalLine) => l.text).join('\n');
     expect(joined.toLowerCase()).toContain('rocket');
   });
 });

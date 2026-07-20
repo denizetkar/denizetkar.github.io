@@ -5,11 +5,39 @@ import {
   RocketPhysics,
   STAGE_DEFINITIONS,
 } from './rocket-simulator.component';
+import type { WritableSignal } from '@angular/core';
 import { SimulationStateService } from '../../services/simulation-state.service';
 import { AchievementService } from '../../services/achievement.service';
 import { DataService } from '../../services/data.service';
 
 const G0 = 9.81;
+
+/**
+ * Test-only mirror of RocketSimulatorComponent's protected/private members
+ * (each member re-declared with the same type as on the component).
+ * `as unknown as RocketHandle` re-exposes them to the spec without weakening
+ * their types — every member must exist on RocketSimulatorComponent itself.
+ * Declared as a standalone interface (not `Component & {...}`) because an
+ * intersection with a class that owns the same private fields collapses to
+ * `never`.
+ */
+type RocketHandle = {
+  thrust: WritableSignal<number>;
+  fuelRatio: WritableSignal<number>;
+  pitchAngle: WritableSignal<number>;
+  altitude: WritableSignal<number>;
+  velocity: WritableSignal<number>;
+  flightState: WritableSignal<string>;
+  activeCheat: WritableSignal<string>;
+  efficiencyRating: () => number;
+  launchRocket(override?: boolean): void;
+  runPhysicsTick(): void;
+  keypressCheat(char: string): void;
+  triggerOverride(): void;
+  resetFlightSimulator(): void;
+  intervalId: ReturnType<typeof setInterval> | null;
+  ignitionTimeoutId: ReturnType<typeof setTimeout> | null;
+};
 
 describe('RocketPhysics.calculateDeltaV (Tsiolkovsky)', () => {
   it('returns Isp * g0 * ln(massRatio) for nominal values', () => {
@@ -185,7 +213,7 @@ describe('RocketSimulatorComponent (integration)', () => {
     expect(STAGE_DEFINITIONS.length).toBeGreaterThanOrEqual(2);
   });
 
-  const c = () => component as any;
+  const c = () => component as unknown as RocketHandle;
 
   it('reads rocketConfig from SimulationStateService on init', () => {
     simState.rocketConfig.set({
@@ -295,7 +323,7 @@ describe('RocketSimulatorComponent (integration)', () => {
     c().runPhysicsTick();
     expect(c().altitude()).toBe(altBefore);
     // Internal timers must be cleared.
-    expect((component as any).intervalId).toBeNull();
-    expect((component as any).ignitionTimeoutId).toBeNull();
+    expect((component as unknown as RocketHandle).intervalId).toBeNull();
+    expect((component as unknown as RocketHandle).ignitionTimeoutId).toBeNull();
   });
 });

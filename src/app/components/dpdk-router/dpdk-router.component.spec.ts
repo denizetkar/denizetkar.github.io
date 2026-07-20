@@ -108,6 +108,6 @@ describe('DpdkRouterComponent', () => {
     expect(simState.isSystemCrashed()).toBe(true);
   });
   it('removes the isLoop checkbox (loops emerge from topology, not a toggle)', () => {
-    expect((component as any).makeLoop).toBeUndefined();
+    expect((component as unknown as { makeLoop?: unknown }).makeLoop).toBeUndefined();
   });
 });

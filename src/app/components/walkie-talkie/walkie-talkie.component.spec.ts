@@ -6,9 +6,32 @@ import {
   CHANNELS,
   DIALOGUE_NODES,
 } from './walkie-talkie.component';
+import type { WritableSignal } from '@angular/core';
+import type { Channel } from './walkie-talkie.component';
 import { SimulationStateService } from '../../services/simulation-state.service';
 import { AchievementService } from '../../services/achievement.service';
 import { DataService } from '../../services/data.service';
+
+/**
+ * Test-only mirror of WalkieTalkieComponent's protected members
+ * (each member re-declared with the same type as on the component).
+ * `as unknown as WalkieTalkieHandle` re-exposes them to the spec without
+ * weakening their types — every member must exist on WalkieTalkieComponent.
+ */
+type WalkieTalkieHandle = {
+  isScanning: WritableSignal<boolean>;
+  isPttHeld: WritableSignal<boolean>;
+  signalStrength: WritableSignal<number>;
+  completedChannels: WritableSignal<Set<Channel['id']>>;
+  scanFrequencies(): void;
+  tuneChannel(id: Channel['id']): void;
+  setCurrentTune(freq: number): void;
+  startPtt(): void;
+  stopPtt(): void;
+  startDialogue(): void;
+  transmit(choiceLabel: string): void;
+  completeCurrentChannel(): void;
+};
 
 describe('RadioProtocol.tuneFrequency', () => {
   it('returns 1.0 for an exact frequency match', () => {
@@ -104,6 +127,8 @@ describe('WalkieTalkieComponent', () => {
     component.ngOnDestroy();
   });
 
+  const c = () => component as unknown as WalkieTalkieHandle;
+
   it('defines 4 main channels + 1 hidden channel at the correct GHz', () => {
     expect(CHANNELS.length).toBe(5);
     const main = CHANNELS.filter((c) => !c.hidden);
@@ -120,16 +145,16 @@ describe('WalkieTalkieComponent', () => {
   it('scanFrequencies shows a SCANNING state then populates foundFrequencies after ~1s', async () => {
     vi.useFakeTimers();
     try {
-      expect((component as any).isScanning()).toBe(false);
-      (component as any).scanFrequencies();
+      expect(c().isScanning()).toBe(false);
+      c().scanFrequencies();
       // During the scan window: isScanning is true, radioStatus is 'scanning',
       // and foundFrequencies is not yet populated.
-      expect((component as any).isScanning()).toBe(true);
+      expect(c().isScanning()).toBe(true);
       expect(simState.radioState().radioStatus).toBe('scanning');
       expect(simState.foundFrequencies().length).toBe(0);
       await vi.advanceTimersByTimeAsync(1000);
       // After the scan completes: isScanning is false, all 4 main channels found.
-      expect((component as any).isScanning()).toBe(false);
+      expect(c().isScanning()).toBe(false);
       const found = simState.foundFrequencies();
       expect(found.length).toBe(4);
       expect(found).toContain('CH1:2.410');
@@ -142,13 +167,13 @@ describe('WalkieTalkieComponent', () => {
   it('scanFrequencies is a no-op while already scanning', async () => {
     vi.useFakeTimers();
     try {
-      (component as any).scanFrequencies();
-      expect((component as any).isScanning()).toBe(true);
+      c().scanFrequencies();
+      expect(c().isScanning()).toBe(true);
       // Second call should be ignored.
-      (component as any).scanFrequencies();
-      expect((component as any).isScanning()).toBe(true);
+      c().scanFrequencies();
+      expect(c().isScanning()).toBe(true);
       await vi.advanceTimersByTimeAsync(1000);
-      expect((component as any).isScanning()).toBe(false);
+      expect(c().isScanning()).toBe(false);
       expect(simState.foundFrequencies().length).toBe(4);
     } finally {
       vi.useRealTimers();
@@ -156,7 +181,7 @@ describe('WalkieTalkieComponent', () => {
   });
 
   it('tuneChannel auto-starts the dialogue (no dead STANDBY panel)', () => {
-    (component as any).tuneChannel('CH1');
+    c().tuneChannel('CH1');
     expect(simState.connectedFrequency()).toBe('CH1');
     expect(component.currentDialogueNode()).not.toBeNull();
     expect(component.currentDialogueNode()?.channel).toBe('CH1');
@@ -165,42 +190,42 @@ describe('WalkieTalkieComponent', () => {
   });
 
   it('PTT (startPtt + stopPtt) advances the dialogue by confirming the first choice', () => {
-    (component as any).tuneChannel('CH1');
+    c().tuneChannel('CH1');
     const root = component.currentDialogueNode();
     expect(root?.nodeId).toBe('ch1-root');
-    (component as any).startPtt();
-    expect((component as any).isPttHeld()).toBe(true);
-    (component as any).stopPtt();
-    expect((component as any).isPttHeld()).toBe(false);
+    c().startPtt();
+    expect(c().isPttHeld()).toBe(true);
+    c().stopPtt();
+    expect(c().isPttHeld()).toBe(false);
     // stopPtt transmitted the first choice → dialogue advanced to ch1-tng.
     expect(component.currentDialogueNode()?.nodeId).toBe('ch1-tng');
   });
 
   it('PTT on a terminal node completes the channel', () => {
-    (component as any).tuneChannel('CH1');
-    (component as any).setCurrentTune(2.41);
+    c().tuneChannel('CH1');
+    c().setCurrentTune(2.41);
     // Walk to the terminal ch1-tng node (one choice: "Over and out").
-    (component as any).transmit(component.currentDialogueNode()!.choices[0].label);
+    c().transmit(component.currentDialogueNode()!.choices[0].label);
     expect(component.currentDialogueNode()?.nodeId).toBe('ch1-tng');
     // PTT on the terminal node → completes the channel.
-    (component as any).startPtt();
-    (component as any).stopPtt();
+    c().startPtt();
+    c().stopPtt();
     expect(component.currentDialogueNode()).toBeNull();
-    expect((component as any).completedChannels().has('CH1')).toBe(true);
+    expect(c().completedChannels().has('CH1')).toBe(true);
   });
 
   it('tuneChannel sets the connected frequency and recomputes signal strength', () => {
-    (component as any).scanFrequencies();
-    (component as any).tuneChannel('CH1');
+    c().scanFrequencies();
+    c().tuneChannel('CH1');
     expect(simState.connectedFrequency()).toBe('CH1');
     // With current tune exactly on 2.410, signal should be 1.0
-    expect((component as any).signalStrength()).toBe(1);
+    expect(c().signalStrength()).toBe(1);
   });
 
   it('exposes dialogue text sourced from DataService bio / currentRole', () => {
-    (component as any).scanFrequencies();
-    (component as any).tuneChannel('CH1');
-    (component as any).startDialogue();
+    c().scanFrequencies();
+    c().tuneChannel('CH1');
+    c().startDialogue();
     const text = simState.receivedTransmission();
     expect(text.length).toBeGreaterThan(0);
     // Bio mentions TNG + fullstack (Python/Angular/TypeScript) — at least one of those words appears.
@@ -210,20 +235,20 @@ describe('WalkieTalkieComponent', () => {
   });
 
   it('reveals CH5 (hidden frequency) after completing CH1', () => {
-    (component as any).scanFrequencies();
-    (component as any).tuneChannel('CH1');
+    c().scanFrequencies();
+    c().tuneChannel('CH1');
     // Force signal to perfect so completeCurrentChannel succeeds
-    (component as any).setCurrentTune(2.41);
-    (component as any).startDialogue();
+    c().setCurrentTune(2.41);
+    c().startDialogue();
     // Walk all CH1 nodes to completion.
     let safety = 0;
     while (component.currentNodeId() !== null && safety < 50) {
       const node = component.currentDialogueNode();
       if (!node || node.choices.length === 0) {
-        (component as any).completeCurrentChannel();
+        c().completeCurrentChannel();
         break;
       }
-      (component as any).transmit(node.choices[0].label);
+      c().transmit(node.choices[0].label);
       // If completion was triggered (node had no choices), break.
       if (component.currentNodeId() === null) break;
       safety++;
@@ -237,45 +262,45 @@ describe('WalkieTalkieComponent', () => {
     expect(ch5Node).toBeTruthy();
     expect(ch5Node!.text).toContain('OMEGA-7');
     // CH5 is hidden until CH1 completes — tuneChannel is a no-op before reveal.
-    (component as any).tuneChannel('CH5');
+    c().tuneChannel('CH5');
     expect(simState.connectedFrequency()).not.toBe('CH5');
     // Complete CH1 to reveal CH5.
-    (component as any).tuneChannel('CH1');
-    (component as any).setCurrentTune(2.41);
+    c().tuneChannel('CH1');
+    c().setCurrentTune(2.41);
     let safety = 0;
     while (component.currentNodeId() !== null && safety < 50) {
       const node = component.currentDialogueNode();
       if (!node || node.choices.length === 0) {
-        (component as any).completeCurrentChannel();
+        c().completeCurrentChannel();
         break;
       }
-      (component as any).transmit(node.choices[0].label);
+      c().transmit(node.choices[0].label);
       if (component.currentNodeId() === null) break;
       safety++;
     }
     expect(simState.foundFrequencies().some((f) => f.includes('CH5'))).toBe(true);
     // Now CH5 tunes and auto-starts its dialogue (with the OMEGA-7 hint).
-    (component as any).tuneChannel('CH5');
+    c().tuneChannel('CH5');
     expect(simState.connectedFrequency()).toBe('CH5');
     expect(component.currentDialogueNode()?.channel).toBe('CH5');
     expect(simState.receivedTransmission()).toContain('OMEGA-7');
   });
 
   it('unlocks all-conversations-complete achievement when all 4 main channels are completed', () => {
-    (component as any).scanFrequencies();
-    for (const chId of ['CH1', 'CH2', 'CH3', 'CH4']) {
-      (component as any).tuneChannel(chId);
+    c().scanFrequencies();
+    for (const chId of ['CH1', 'CH2', 'CH3', 'CH4'] as const) {
+      c().tuneChannel(chId);
       const ch = CHANNELS.find((c) => c.id === chId)!;
-      (component as any).setCurrentTune(ch.freqGHz);
-      (component as any).startDialogue();
+      c().setCurrentTune(ch.freqGHz);
+      c().startDialogue();
       let safety = 0;
       while (component.currentNodeId() !== null && safety < 50) {
         const node = component.currentDialogueNode();
         if (!node || node.choices.length === 0) {
-          (component as any).completeCurrentChannel();
+          c().completeCurrentChannel();
           break;
         }
-        (component as any).transmit(node.choices[0].label);
+        c().transmit(node.choices[0].label);
         if (component.currentNodeId() === null) break;
         safety++;
       }

@@ -9,6 +9,24 @@ import { GossipVisualizerComponent } from './gossip-visualizer.component';
 import { DataService } from '../../services/data.service';
 import { SimulationStateService } from '../../services/simulation-state.service';
 import { AchievementService } from '../../services/achievement.service';
+import type { WritableSignal } from '@angular/core';
+
+/**
+ * Test-only mirror of GossipVisualizerComponent's protected/private members
+ * (each member re-declared with the same type as on the component).
+ * `as unknown as GossipHandle` re-exposes them to the spec without weakening
+ * their types — every member must exist on GossipVisualizerComponent.
+ */
+type GossipHandle = {
+  protocol: GossipProtocol;
+  nodes: ProtocolNode[];
+  simState: SimulationStateService;
+  tickCount: WritableSignal<number>;
+  messagesSent: WritableSignal<number>;
+  argCode: WritableSignal<string | null>;
+  checkWinCondition(): void;
+  injectEpidemic(): void;
+};
 
 // ---- helpers --------------------------------------------------------------
 
@@ -266,20 +284,20 @@ describe('GossipVisualizerComponent', () => {
   });
 
   it('sources the bio node body from DataService.bio()', () => {
-    const nodes: ProtocolNode[] = (fixture as any).nodes;
+    const nodes: ProtocolNode[] = (fixture as unknown as GossipHandle).nodes;
     const bioNode = nodes.find((n) => n.id === 'bio');
     expect(bioNode).toBeDefined();
     expect(bioNode!.body).toEqual([dataService.bio()]);
   });
 
   it('sources the tng node body from DataService.currentRole()', () => {
-    const tngNode: ProtocolNode | undefined = (fixture as any).nodes.find((n: any) => n.id === 'tng');
+    const tngNode: ProtocolNode | undefined = (fixture as unknown as GossipHandle).nodes.find((n: ProtocolNode) => n.id === 'tng');
     expect(tngNode).toBeDefined();
     expect(tngNode!.body).toEqual([dataService.currentRole()]);
   });
 
   it('maps the bogazici node from BOTH Boğaziçi EducationEntry degrees', () => {
-    const bogNode: ProtocolNode | undefined = (fixture as any).nodes.find((n: any) => n.id === 'bogazici');
+    const bogNode: ProtocolNode | undefined = (fixture as unknown as GossipHandle).nodes.find((n: ProtocolNode) => n.id === 'bogazici');
     expect(bogNode).toBeDefined();
     const bodyJoined = bogNode!.body.join('\n');
     const bogEntries = dataService
@@ -296,10 +314,10 @@ describe('GossipVisualizerComponent', () => {
   });
 
   it('exposes the GossipProtocol instance and supports tick', () => {
-    const proto: GossipProtocol = (fixture as any).protocol;
+    const proto: GossipProtocol = (fixture as unknown as GossipHandle).protocol;
     expect(proto).toBeInstanceOf(GossipProtocol);
     // infect the bio node and tick once -> messages sent should be >= 0 (no throw)
-    const nodes: ProtocolNode[] = (fixture as any).nodes;
+    const nodes: ProtocolNode[] = (fixture as unknown as GossipHandle).nodes;
     nodes[0]!.messages.add('rumor');
     nodes[0]!.state = 'infected';
     expect(() => proto.tick(nodes, [], 'push-pull')).not.toThrow();
@@ -308,57 +326,57 @@ describe('GossipVisualizerComponent', () => {
   it('sets gossipArgSolved=true when convergence reaches 100 with ARG partition active', () => {
     // Force partition active then reach 100% convergence via anti-entropy.
     simState.gossipArgPartition.set(['A-B']);
-    const proto: GossipProtocol = (fixture as any).protocol;
-    const nodes: ProtocolNode[] = (fixture as any).nodes;
+    const proto: GossipProtocol = (fixture as unknown as GossipHandle).protocol;
+    const nodes: ProtocolNode[] = (fixture as unknown as GossipHandle).nodes;
     nodes.forEach((n) => n.messages.add('rumor'));
     // Trigger the win-check path manually (component method).
-    (fixture as any).checkWinCondition();
+    (fixture as unknown as GossipHandle).checkWinCondition();
     expect(simState.gossipArgSolved()).toBe(true);
   });
 
   it('unlocks gossip-converged achievement when convergence is 100', () => {
-    const nodes: ProtocolNode[] = (fixture as any).nodes;
+    const nodes: ProtocolNode[] = (fixture as unknown as GossipHandle).nodes;
     nodes.forEach((n) => n.messages.add('rumor'));
-    (fixture as any).checkWinCondition();
+    (fixture as unknown as GossipHandle).checkWinCondition();
     expect(achievements.isUnlocked('gossip-converged')).toBe(true);
   });
 
   it('exposes simState as protected for template access', () => {
-    expect((fixture as any).simState).toBe(simState);
+    expect((fixture as unknown as GossipHandle).simState).toBe(simState);
   });
 
   describe('injectEpidemic (user-driven tick)', () => {
     it('Given fresh mesh, When injectEpidemic called once, Then tickCount advances by exactly 1', () => {
-      const before = (fixture as any).tickCount();
-      (fixture as any).injectEpidemic();
-      expect((fixture as any).tickCount()).toBe(before + 1);
+      const before = (fixture as unknown as GossipHandle).tickCount();
+      (fixture as unknown as GossipHandle).injectEpidemic();
+      expect((fixture as unknown as GossipHandle).tickCount()).toBe(before + 1);
     });
 
     it('Given fresh mesh with bio node infected, When injectEpidemic, Then messagesSent increments (rumor propagates)', () => {
-      const before = (fixture as any).messagesSent();
-      (fixture as any).injectEpidemic();
-      expect((fixture as any).messagesSent()).toBeGreaterThan(before);
+      const before = (fixture as unknown as GossipHandle).messagesSent();
+      (fixture as unknown as GossipHandle).injectEpidemic();
+      expect((fixture as unknown as GossipHandle).messagesSent()).toBeGreaterThan(before);
     });
 
     it('Given fresh mesh, When injectEpidemic called twice in a row, Then tickCount is 2', () => {
-      (fixture as any).injectEpidemic();
-      (fixture as any).injectEpidemic();
-      expect((fixture as any).tickCount()).toBe(2);
+      (fixture as unknown as GossipHandle).injectEpidemic();
+      (fixture as unknown as GossipHandle).injectEpidemic();
+      expect((fixture as unknown as GossipHandle).tickCount()).toBe(2);
     });
 
     it('Given fresh mesh, When no user action, Then protocol does NOT auto-tick (messagesSent stays 0)', () => {
-      expect((fixture as any).messagesSent()).toBe(0);
-      expect((fixture as any).tickCount()).toBe(0);
+      expect((fixture as unknown as GossipHandle).messagesSent()).toBe(0);
+      expect((fixture as unknown as GossipHandle).tickCount()).toBe(0);
     });
 
     it('Given bio node rumor cleared, When injectEpidemic, Then bio node re-infected and protocol advances', () => {
-      const nodes: ProtocolNode[] = (fixture as any).nodes;
+      const nodes: ProtocolNode[] = (fixture as unknown as GossipHandle).nodes;
       const bio = nodes.find((n) => n.id === 'bio')!;
       bio.messages.clear();
       bio.state = 'idle';
-      (fixture as any).injectEpidemic();
+      (fixture as unknown as GossipHandle).injectEpidemic();
       expect(bio.messages.has('rumor')).toBe(true);
-      expect((fixture as any).tickCount()).toBe(1);
+      expect((fixture as unknown as GossipHandle).tickCount()).toBe(1);
     });
   });
 });
