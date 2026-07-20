@@ -231,7 +231,10 @@ export class WalkieTalkieComponent implements OnDestroy {
   }
 
   ngOnDestroy() {
-    // No timers to clear (scanFrequencies is synchronous).
+    if (this.scanTimer !== null) {
+      clearTimeout(this.scanTimer);
+      this.scanTimer = null;
+    }
   }
 
   // --- Template helpers (Angular templates can't call parseFloat directly) ---
@@ -265,16 +268,27 @@ export class WalkieTalkieComponent implements OnDestroy {
     return this.simState.foundFrequencies().some((f) => f.startsWith(id));
   }
 
-  // --- Frequency scan (synchronous, replaces BLE scan) ---
+  // --- Frequency scan ---
+
+  private scanTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected scanFrequencies(): void {
     if (!this.isPowered() || this.isScanning()) return;
     this.isScanning.set(true);
-    const main = CHANNELS.filter((c) => !c.hidden);
-    const freqs = main.map((c) => `${c.id}:${c.freqGHz.toFixed(3)}`);
-    this.simState.foundFrequencies.set(freqs);
-    this.simState.radioState.update((s) => ({ ...s, isScanning: false }));
-    this.isScanning.set(false);
+    this.simState.radioState.update((s) => ({ ...s, isScanning: true, radioStatus: 'scanning' }));
+    // Brief delay so the user sees the "SCANNING..." state before results appear.
+    this.scanTimer = setTimeout(() => {
+      this.scanTimer = null;
+      const main = CHANNELS.filter((c) => !c.hidden);
+      const freqs = main.map((c) => `${c.id}:${c.freqGHz.toFixed(3)}`);
+      this.simState.foundFrequencies.set(freqs);
+      this.simState.radioState.update((s) => ({
+        ...s,
+        isScanning: false,
+        radioStatus: this.simState.connectedFrequency() ? 'connected' : 'disconnected',
+      }));
+      this.isScanning.set(false);
+    }, 1000);
   }
 
   // --- Channel tuning ---
@@ -294,7 +308,9 @@ export class WalkieTalkieComponent implements OnDestroy {
     // Reset tune to the channel's exact frequency so the user must fine-tune.
     this.currentTune.set(ch.freqGHz);
     this.recomputeSignal();
-    this._currentNodeId.set(null);
+    // Auto-start the dialogue so the user immediately sees the channel content
+    // instead of a dead "STANDBY" panel that requires a second click.
+    this.startDialogue();
   }
 
   protected setCurrentTune(freq: number): void {
@@ -414,7 +430,17 @@ export class WalkieTalkieComponent implements OnDestroy {
     if (!this.isPttHeld()) return;
     this.isPttHeld.set(false);
     this.staticActive.set(false);
-    this.simState.radioState.update((s) => ({ ...s, isPttHeld: false, radioStatus: 'connected' }));
+    const node = this.currentDialogueNode();
+    if (node && node.choices.length > 0) {
+      // PTT acts as "transmit": confirm the first dialogue choice. If the node
+      // is terminal (single "Over and out" choice → nextNodeId null), this
+      // completes the channel; otherwise it advances to the next node.
+      // transmit() updates radioStatus appropriately internally.
+      this.simState.radioState.update((s) => ({ ...s, isPttHeld: false }));
+      this.transmit(node.choices[0].label);
+    } else {
+      this.simState.radioState.update((s) => ({ ...s, isPttHeld: false, radioStatus: 'connected' }));
+    }
   }
 
   protected togglePower(): void {

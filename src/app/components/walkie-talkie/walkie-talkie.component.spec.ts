@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 import {
   WalkieTalkieComponent,
   RadioProtocol,
@@ -116,12 +117,76 @@ describe('WalkieTalkieComponent', () => {
     expect(hidden?.freqGHz).toBe(2.49);
   });
 
-  it('scanFrequencies populates SimulationStateService.foundFrequencies synchronously with the 4 main channels', () => {
-    (component as any).scanFrequencies();
-    const found = simState.foundFrequencies();
-    expect(found.length).toBe(4);
-    expect(found).toContain('CH1:2.410');
-    expect(found).toContain('CH4:2.470');
+  it('scanFrequencies shows a SCANNING state then populates foundFrequencies after ~1s', async () => {
+    vi.useFakeTimers();
+    try {
+      expect((component as any).isScanning()).toBe(false);
+      (component as any).scanFrequencies();
+      // During the scan window: isScanning is true, radioStatus is 'scanning',
+      // and foundFrequencies is not yet populated.
+      expect((component as any).isScanning()).toBe(true);
+      expect(simState.radioState().radioStatus).toBe('scanning');
+      expect(simState.foundFrequencies().length).toBe(0);
+      await vi.advanceTimersByTimeAsync(1000);
+      // After the scan completes: isScanning is false, all 4 main channels found.
+      expect((component as any).isScanning()).toBe(false);
+      const found = simState.foundFrequencies();
+      expect(found.length).toBe(4);
+      expect(found).toContain('CH1:2.410');
+      expect(found).toContain('CH4:2.470');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('scanFrequencies is a no-op while already scanning', async () => {
+    vi.useFakeTimers();
+    try {
+      (component as any).scanFrequencies();
+      expect((component as any).isScanning()).toBe(true);
+      // Second call should be ignored.
+      (component as any).scanFrequencies();
+      expect((component as any).isScanning()).toBe(true);
+      await vi.advanceTimersByTimeAsync(1000);
+      expect((component as any).isScanning()).toBe(false);
+      expect(simState.foundFrequencies().length).toBe(4);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('tuneChannel auto-starts the dialogue (no dead STANDBY panel)', () => {
+    (component as any).tuneChannel('CH1');
+    expect(simState.connectedFrequency()).toBe('CH1');
+    expect(component.currentDialogueNode()).not.toBeNull();
+    expect(component.currentDialogueNode()?.channel).toBe('CH1');
+    // Transmission text is already populated from the auto-started dialogue.
+    expect(simState.receivedTransmission().length).toBeGreaterThan(0);
+  });
+
+  it('PTT (startPtt + stopPtt) advances the dialogue by confirming the first choice', () => {
+    (component as any).tuneChannel('CH1');
+    const root = component.currentDialogueNode();
+    expect(root?.nodeId).toBe('ch1-root');
+    (component as any).startPtt();
+    expect((component as any).isPttHeld()).toBe(true);
+    (component as any).stopPtt();
+    expect((component as any).isPttHeld()).toBe(false);
+    // stopPtt transmitted the first choice → dialogue advanced to ch1-tng.
+    expect(component.currentDialogueNode()?.nodeId).toBe('ch1-tng');
+  });
+
+  it('PTT on a terminal node completes the channel', () => {
+    (component as any).tuneChannel('CH1');
+    (component as any).setCurrentTune(2.41);
+    // Walk to the terminal ch1-tng node (one choice: "Over and out").
+    (component as any).transmit(component.currentDialogueNode()!.choices[0].label);
+    expect(component.currentDialogueNode()?.nodeId).toBe('ch1-tng');
+    // PTT on the terminal node → completes the channel.
+    (component as any).startPtt();
+    (component as any).stopPtt();
+    expect(component.currentDialogueNode()).toBeNull();
+    expect((component as any).completedChannels().has('CH1')).toBe(true);
   });
 
   it('tuneChannel sets the connected frequency and recomputes signal strength', () => {
@@ -165,6 +230,35 @@ describe('WalkieTalkieComponent', () => {
     }
     const found = simState.foundFrequencies();
     expect(found.some((f) => f.includes('CH5'))).toBe(true);
+  });
+
+  it('CH5 dialogue contains the OMEGA-7 ARG hint and is tunable after CH1 completes', () => {
+    const ch5Node = DIALOGUE_NODES.find((n) => n.channel === 'CH5');
+    expect(ch5Node).toBeTruthy();
+    expect(ch5Node!.text).toContain('OMEGA-7');
+    // CH5 is hidden until CH1 completes — tuneChannel is a no-op before reveal.
+    (component as any).tuneChannel('CH5');
+    expect(simState.connectedFrequency()).not.toBe('CH5');
+    // Complete CH1 to reveal CH5.
+    (component as any).tuneChannel('CH1');
+    (component as any).setCurrentTune(2.41);
+    let safety = 0;
+    while (component.currentNodeId() !== null && safety < 50) {
+      const node = component.currentDialogueNode();
+      if (!node || node.choices.length === 0) {
+        (component as any).completeCurrentChannel();
+        break;
+      }
+      (component as any).transmit(node.choices[0].label);
+      if (component.currentNodeId() === null) break;
+      safety++;
+    }
+    expect(simState.foundFrequencies().some((f) => f.includes('CH5'))).toBe(true);
+    // Now CH5 tunes and auto-starts its dialogue (with the OMEGA-7 hint).
+    (component as any).tuneChannel('CH5');
+    expect(simState.connectedFrequency()).toBe('CH5');
+    expect(component.currentDialogueNode()?.channel).toBe('CH5');
+    expect(simState.receivedTransmission()).toContain('OMEGA-7');
   });
 
   it('unlocks all-conversations-complete achievement when all 4 main channels are completed', () => {
