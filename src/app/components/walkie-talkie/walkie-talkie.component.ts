@@ -10,14 +10,15 @@ export interface Channel {
   id: 'CH1' | 'CH2' | 'CH3' | 'CH4' | 'CH5';
   freqGHz: number;
   hidden: boolean;
+  bars: number; // 1-5 signal strength indicator for scan results
 }
 
 export const CHANNELS: readonly Channel[] = [
-  { id: 'CH1', freqGHz: 2.41, hidden: false },
-  { id: 'CH2', freqGHz: 2.43, hidden: false },
-  { id: 'CH3', freqGHz: 2.45, hidden: false },
-  { id: 'CH4', freqGHz: 2.47, hidden: false },
-  { id: 'CH5', freqGHz: 2.49, hidden: true },
+  { id: 'CH1', freqGHz: 2.41, hidden: false, bars: 4 },
+  { id: 'CH2', freqGHz: 2.43, hidden: false, bars: 2 },
+  { id: 'CH3', freqGHz: 2.45, hidden: false, bars: 3 },
+  { id: 'CH4', freqGHz: 2.47, hidden: false, bars: 5 },
+  { id: 'CH5', freqGHz: 2.49, hidden: true, bars: 5 },
 ];
 
 // --- Branching dialogue tree ---
@@ -154,6 +155,11 @@ export const DIALOGUE_NODES: readonly DialogueNode[] = [
 
 const NOISE_CHARS = '█▓▒░#%@&?';
 const TOLERANCE = 0.05;
+const CLEAR_THRESHOLD = 0.8;
+const GARBLED_THRESHOLD = 0.5;
+const START_FREQ = 2.400;
+const SLIDER_MIN = 2.400;
+const SLIDER_MAX = 2.500;
 
 // --- Pure protocol logic ---
 
@@ -208,9 +214,11 @@ export class WalkieTalkieComponent implements OnDestroy {
   protected readonly activeChannel = signal<number>(1);
   protected readonly isPttHeld = signal(false);
   protected readonly staticActive = signal(false);
-  protected readonly currentTune = signal<number>(2.41);
+  protected readonly currentTune = signal<number>(START_FREQ);
   protected readonly signalStrength = signal<number>(0);
   protected readonly completedChannels = signal<Set<Channel['id']>>(new Set());
+  protected readonly scanResults = signal<readonly Channel[]>([]);
+  protected readonly pttFeedback = signal<string>('');
 
   // Active dialogue
   private readonly _currentNodeId = signal<string | null>(null);
@@ -226,8 +234,9 @@ export class WalkieTalkieComponent implements OnDestroy {
       activeChannel: 1,
       isPttHeld: false,
       radioStatus: 'disconnected',
-      staticActive: false,
+      staticActive: true,
     });
+    this.recomputeSignal();
   }
 
   ngOnDestroy() {
@@ -268,6 +277,21 @@ export class WalkieTalkieComponent implements OnDestroy {
     return this.simState.foundFrequencies().some((f) => f.startsWith(id));
   }
 
+  protected signalBars(): string {
+    const s = this.signalStrength();
+    const filled = Math.round(s * 5);
+    return '▓'.repeat(filled) + '░'.repeat(5 - filled);
+  }
+
+  protected isClear(): boolean {
+    return this.signalStrength() > CLEAR_THRESHOLD;
+  }
+
+  protected isGarbled(): boolean {
+    const s = this.signalStrength();
+    return s > GARBLED_THRESHOLD && s <= CLEAR_THRESHOLD;
+  }
+
   // --- Frequency scan ---
 
   private scanTimer: ReturnType<typeof setTimeout> | null = null;
@@ -280,6 +304,7 @@ export class WalkieTalkieComponent implements OnDestroy {
     this.scanTimer = setTimeout(() => {
       this.scanTimer = null;
       const main = CHANNELS.filter((c) => !c.hidden);
+      this.scanResults.set(main);
       const freqs = main.map((c) => `${c.id}:${c.freqGHz.toFixed(3)}`);
       this.simState.foundFrequencies.set(freqs);
       this.simState.radioState.update((s) => ({
@@ -305,12 +330,18 @@ export class WalkieTalkieComponent implements OnDestroy {
       activeChannel: parseInt(id.replace('CH', ''), 10),
       radioStatus: 'connected',
     }));
-    // Reset tune to the channel's exact frequency so the user must fine-tune.
-    this.currentTune.set(ch.freqGHz);
+    this.currentTune.set(this.deadFrequencyFor(ch.freqGHz));
+    this._currentNodeId.set(null);
     this.recomputeSignal();
-    // Auto-start the dialogue so the user immediately sees the channel content
-    // instead of a dead "STANDBY" panel that requires a second click.
-    this.startDialogue();
+    this.pttFeedback.set('');
+  }
+
+  private deadFrequencyFor(targetFreq: number): number {
+    const lo = targetFreq - TOLERANCE - 0.001;
+    const hi = targetFreq + TOLERANCE + 0.001;
+    const loClamped = Math.max(SLIDER_MIN, lo);
+    const hiClamped = Math.min(SLIDER_MAX, hi);
+    return hiClamped <= SLIDER_MAX ? hiClamped : loClamped;
   }
 
   protected setCurrentTune(freq: number): void {
@@ -322,14 +353,66 @@ export class WalkieTalkieComponent implements OnDestroy {
     const id = this.simState.connectedFrequency();
     if (!id) {
       this.signalStrength.set(0);
+      this.updateStatic(true);
       return;
     }
     const ch = CHANNELS.find((c) => c.id === id);
     if (!ch) {
       this.signalStrength.set(0);
+      this.updateStatic(true);
       return;
     }
-    this.signalStrength.set(RadioProtocol.tuneFrequency(ch.freqGHz, this.currentTune()));
+    const signal = RadioProtocol.tuneFrequency(ch.freqGHz, this.currentTune());
+    this.signalStrength.set(signal);
+    this.updateStatic(signal < CLEAR_THRESHOLD);
+    // Live preview: garbled text appears as signal improves.
+    this.previewTransmission();
+  }
+
+  private updateStatic(active: boolean): void {
+    this.staticActive.set(active);
+    this.simState.radioState.update((s) => ({ ...s, staticActive: active }));
+  }
+
+  private previewTransmission(): void {
+    const id = this.simState.connectedFrequency();
+    if (!id) {
+      this.simState.receivedTransmission.set('');
+      return;
+    }
+    const signal = this.signalStrength();
+    if (signal < GARBLED_THRESHOLD) {
+      // Below 0.5 — pure static.
+      this.simState.receivedTransmission.set(this.staticNoise());
+      return;
+    }
+    if (signal < CLEAR_THRESHOLD) {
+      // Between 0.5 and 0.8 — garbled preview of what's coming.
+      this.simState.receivedTransmission.set(this.garbledPreview(id as Channel['id']));
+      return;
+    }
+    // Above 0.8 — clear preview or active dialogue.
+    const node = this.currentDialogueNode();
+    if (node !== null) {
+      this.simState.receivedTransmission.set(node.text);
+    } else {
+      this.simState.receivedTransmission.set('◉ SIGNAL LOCKED — HOLD PTT TO TRANSMIT');
+    }
+  }
+
+  private staticNoise(): string {
+    const chars = NOISE_CHARS;
+    let out = '';
+    for (let i = 0; i < 40; i++) {
+      out += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return out;
+  }
+
+  private garbledPreview(channelId: Channel['id']): string {
+    const root = DIALOGUE_NODES.find((n) => n.channel === channelId && n.nodeId.endsWith('-root'));
+    const text = root?.text ?? '...transmission detected...';
+    return RadioProtocol.injectNoise(text, this.signalStrength());
   }
 
   // --- Dialogue flow ---
@@ -337,18 +420,23 @@ export class WalkieTalkieComponent implements OnDestroy {
   protected startDialogue(): void {
     const id = this.simState.connectedFrequency();
     if (!id) {
-      this.simState.receivedTransmission.set('NO CARRIER — tune a channel first.');
+      this.pttFeedback.set('NO CARRIER — tune a channel first.');
       return;
     }
-    const root = DIALOGUE_NODES.find((n) => n.channel === id);
+    if (this.signalStrength() <= CLEAR_THRESHOLD) {
+      this.pttFeedback.set('SIGNAL TOO WEAK — TUNE CLOSER');
+      return;
+    }
+    const root = DIALOGUE_NODES.find((n) => n.channel === id && n.nodeId.endsWith('-root'));
     if (!root) {
-      this.simState.receivedTransmission.set('NO TRANSMISSION on this band.');
+      this.pttFeedback.set('NO TRANSMISSION on this band.');
       return;
     }
     this._currentNodeId.set(root.nodeId);
     this.simState.conversationState.set({ nodeId: root.nodeId, history: [] });
     this.simState.radioState.update((s) => ({ ...s, radioStatus: 'receiving' }));
     this.transmitText(root.text);
+    this.pttFeedback.set('');
   }
 
   // PTT repurposed: transmit confirms a dialogue choice.
@@ -382,10 +470,8 @@ export class WalkieTalkieComponent implements OnDestroy {
     const id = this.simState.connectedFrequency() as Channel['id'] | null;
     if (!id) return;
     // Win condition: signal must be > 0.8 to "complete clearly".
-    if (this.signalStrength() <= 0.8) {
-      this.simState.receivedTransmission.set(
-        'CARRIER TOO NOISY — fine-tune to signal > 0.8 to complete this transmission.',
-      );
+    if (this.signalStrength() <= CLEAR_THRESHOLD) {
+      this.pttFeedback.set('CARRIER TOO NOISY — TUNE TO SIGNAL > 0.8');
       return;
     }
     this.completedChannels.update((set) => {
@@ -395,26 +481,23 @@ export class WalkieTalkieComponent implements OnDestroy {
     });
     this.simState.receivedTransmission.set(`CHANNEL ${id} TRANSMISSION COMPLETE. Over and out.`);
 
-    // Reveal CH5 after CH1 completes.
-    if (id === 'CH1') {
+    // Reveal CH5 after ALL 4 main channels complete.
+    const allMain = CHANNELS.filter((c) => !c.hidden).every((c) =>
+      this.completedChannels().has(c.id),
+    );
+    if (allMain) {
       const hidden = CHANNELS.find((c) => c.hidden);
       if (hidden && !this.simState.foundFrequencies().some((f) => f.startsWith(hidden.id))) {
         this.simState.foundFrequencies.update((list) => [
           ...list,
           `${hidden.id}:${hidden.freqGHz.toFixed(3)}`,
         ]);
+        this.scanResults.update((list) => [...list, hidden]);
       }
+      this.achievements.unlock('all-conversations-complete');
     }
 
     this._currentNodeId.set(null);
-
-    // Win condition: all 4 main channels complete.
-    const allMain = CHANNELS.filter((c) => !c.hidden).every((c) =>
-      this.completedChannels().has(c.id),
-    );
-    if (allMain) {
-      this.achievements.unlock('all-conversations-complete');
-    }
   }
 
   // --- PTT button (transmit confirmation) ---
@@ -429,13 +512,15 @@ export class WalkieTalkieComponent implements OnDestroy {
   protected stopPtt(): void {
     if (!this.isPttHeld()) return;
     this.isPttHeld.set(false);
-    this.staticActive.set(false);
+    this.updateStatic(this.signalStrength() < CLEAR_THRESHOLD);
+    // If no dialogue active, PTT attempts to start one (requires signal > 0.8).
+    if (this._currentNodeId() === null) {
+      this.startDialogue();
+      this.simState.radioState.update((s) => ({ ...s, isPttHeld: false }));
+      return;
+    }
     const node = this.currentDialogueNode();
     if (node && node.choices.length > 0) {
-      // PTT acts as "transmit": confirm the first dialogue choice. If the node
-      // is terminal (single "Over and out" choice → nextNodeId null), this
-      // completes the channel; otherwise it advances to the next node.
-      // transmit() updates radioStatus appropriately internally.
       this.simState.radioState.update((s) => ({ ...s, isPttHeld: false }));
       this.transmit(node.choices[0].label);
     } else {

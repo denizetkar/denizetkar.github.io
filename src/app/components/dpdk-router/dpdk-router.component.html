@@ -2,9 +2,20 @@
   <div class="objective-banner">
     <span class="objective-text">
       <span class="obj-tag">OBJECTIVE</span>
-      Fix the broken routing table and route all 4 packets. Add a rule for the missing subnet, then inject traffic.
+      <ng-container *ngIf="droppedCount() === 0 && routedCount() > 0; else needsRules">
+        All packets routing — hold the stream to confirm stability.
+      </ng-container>
+      <ng-template #needsRules>
+        2 packets are being dropped — add the missing routing rules to route all 4 packets.
+      </ng-template>
     </span>
-    <span class="objective-status">PACKETS ROUTED: {{ routedCount() }}/4 / CPU: {{ cpuLoad() }}%</span>
+    <span class="objective-status">
+      <span class="stat-routed">ROUTED: {{ routedCount() }}</span>
+      <span class="stat-divider">/</span>
+      <span class="stat-dropped">DROPPED: {{ droppedCount() }}</span>
+      <span class="stat-divider">/</span>
+      <span class="stat-stream" [class.active]="isStreaming()">{{ isStreaming() ? 'STREAMING' : 'IDLE' }}</span>
+    </span>
   </div>
   <div class="router-row">
   <div class="router-dashboard">
@@ -26,11 +37,21 @@
           <span class="value glow-text">{{ (packetRate() / 1000) | number:'1.1-2' }} Mpps</span>
           <span class="label">Real DPDK: 10+ Mpps/core</span>
         </div>
+
+        <div class="telemetry-box routed-box">
+          <span class="label">Packets Routed</span>
+          <span class="value routed-glow">{{ routedCount() }}</span>
+        </div>
+
+        <div class="telemetry-box dropped-box" [class.alarm]="droppedCount() > 0">
+          <span class="label">Packets Dropped</span>
+          <span class="value dropped-glow">{{ droppedCount() }}</span>
+        </div>
       </div>
 
       <div class="control-actions">
-        <button class="btn-traffic glow-border" (click)="injectTraffic()">
-          ⚡ Inject Packets
+        <button class="btn-traffic glow-border" (click)="injectTraffic()" [class.streaming]="isStreaming()">
+          {{ isStreaming() ? '⚡ Streaming...' : '⚡ Inject Packets' }}
         </button>
         <button class="btn-stop" (click)="stopTraffic()">
           ⏹️ Stop Traffic
@@ -144,6 +165,28 @@
           <span class="pkt-id">#{{ pkt.id }}</span>
         </div>
       }
+      @for (pkt of droppedPackets(); track pkt.id) {
+        <div
+          class="packet-dot dropped-exit"
+          [style.left.%]="pkt.position"
+          [style.top.%]="50">
+          <span class="pkt-id">#{{ pkt.id }}</span>
+        </div>
+      }
+    </div>
+
+    <div class="route-log-panel">
+      <h5>ROUTING LOG</h5>
+      <div class="log-list">
+        @for (entry of routeLogs(); track entry.id) {
+          <div class="log-line" [ngClass]="entry.outcome.toLowerCase()">
+            <span class="log-time">{{ entry.timestamp | date:'HH:mm:ss' }}</span>
+            <span class="log-detail">{{ entry.detail }}</span>
+          </div>
+        } @empty {
+          <div class="log-line empty">No traffic yet. Click "Inject Packets" to begin.</div>
+        }
+      </div>
     </div>
   </div>
   </div>

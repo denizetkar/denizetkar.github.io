@@ -9,6 +9,15 @@ export interface RoutablePacket {
   status: 'in_flight' | 'routed' | 'looping' | 'dropped'; position: number; visitedHops: string[];
 }
 
+export interface RouteLogEntry {
+  id: string;
+  packetId: string;
+  dstIp: string;
+  outcome: 'ROUTED' | 'DROPPED' | 'NO_ROUTE';
+  detail: string;
+  timestamp: number;
+}
+
 export class RoutingEngine {
   static ipToIntPublic(ip: string): number | null { return RoutingEngine.ipToInt(ip); }
   static parseCidrPublic(cidr: string): { ip: number; mask: number } | null { return RoutingEngine.parseCidr(cidr); }
@@ -73,12 +82,14 @@ export class RoutingEngine {
 const DEFAULT_RULES: RouteRule[] = [
   { destination: '172.16.0.0/12', nextHop: '10.0.0.1', interface: 'Port 2 (LAN)' },
   { destination: '192.168.0.0/16', nextHop: '192.168.10.1', interface: 'Port 3 (DMZ)' },
-  { destination: '0.0.0.0/0', nextHop: '192.168.10.1', interface: 'Port 3 (DMZ)' },
 ];
 const INITIAL_TTL = 64;
 const QUEUE_CAPACITY = 8;
 const PROCESSING_COST = 4;
 const TICK_MS = 200;
+const INJECT_BATCH = ['10.10.5.20', '172.16.8.4', '192.168.50.10', '8.8.8.8'];
+const INJECT_INTERVAL_MS = 2000;
+const MAX_LOG_ENTRIES = 30;
 
 @Component({
   selector: 'app-dpdk-router',
@@ -92,22 +103,33 @@ export class DpdkRouterComponent implements OnDestroy {
 
   public readonly rules = computed<RouteRule[]>(() => this.simState.routingRules());
   public readonly packets = signal<RoutablePacket[]>([]);
+  public readonly droppedPackets = signal<RoutablePacket[]>([]);
   public readonly cpuLoad = signal(0);
   public readonly packetRate = signal(0);
   public readonly alarmActive = signal(false);
   public readonly routedCount = signal(0);
+  public readonly droppedCount = signal(0);
+  public readonly routeLogs = signal<RouteLogEntry[]>([]);
+  public readonly isStreaming = signal(false);
   public readonly newCidr = signal('10.10.0.0/16');
   public readonly newPort = signal('Port 1 (WAN)');
   public readonly newGateway = signal('192.168.1.1');
-  private intervalId: ReturnType<typeof setInterval> | null = null;
+  private tickIntervalId: ReturnType<typeof setInterval> | null = null;
+  private injectIntervalId: ReturnType<typeof setInterval> | null = null;
   private packetIdCounter = 0;
+  private logIdCounter = 0;
+  private achievementUnlocked = false;
 
   constructor() {
     if (this.simState.routingRules().length === 0) this.simState.routingRules.set(DEFAULT_RULES);
   }
 
-  ngOnDestroy(): void { this.clearInterval(); }
-  private clearInterval(): void { if (this.intervalId !== null) { clearInterval(this.intervalId); this.intervalId = null; } }
+  ngOnDestroy(): void { this.clearIntervals(); }
+  private clearIntervals(): void {
+    if (this.tickIntervalId !== null) { clearInterval(this.tickIntervalId); this.tickIntervalId = null; }
+    if (this.injectIntervalId !== null) { clearInterval(this.injectIntervalId); this.injectIntervalId = null; }
+    this.isStreaming.set(false);
+  }
 
   /** A rule is part of an A-B bounce if its nextHop is inside another rule's CIDR and vice versa. */
   isLoopingRule(rule: RouteRule, _index: number): boolean {
@@ -142,6 +164,16 @@ export class DpdkRouterComponent implements OnDestroy {
     }]);
   }
 
+  private injectBatch(): void {
+    for (const dst of INJECT_BATCH) this.injectPacket(dst);
+  }
+
+  private addLog(entry: Omit<RouteLogEntry, 'id' | 'timestamp'>): void {
+    this.logIdCounter++;
+    const full: RouteLogEntry = { ...entry, id: `log-${this.logIdCounter}`, timestamp: Date.now() };
+    this.routeLogs.update((prev) => [full, ...prev].slice(0, MAX_LOG_ENTRIES));
+  }
+
   /** LPM on currentHop, TTL decrement, A-B-A loop detect, tail-drop, emergent GSOD on CPU=100%+loop. */
   processTick(): void {
     if (this.simState.isSystemCrashed()) return;
@@ -149,6 +181,7 @@ export class DpdkRouterComponent implements OnDestroy {
     let processed = 0;
     let loopingCount = 0;
     const routed: RoutablePacket[] = [];
+    const dropped: RoutablePacket[] = [];
     const stillInFlight: RoutablePacket[] = [];
 
     for (const pkt of this.packets()) {
@@ -157,6 +190,17 @@ export class DpdkRouterComponent implements OnDestroy {
         processed++;
         if (pkt.visitedHops.length > 0) {
           routed.push({ ...pkt, position: 100, status: 'routed' });
+          this.addLog({
+            packetId: pkt.id, dstIp: pkt.dstIp, outcome: 'ROUTED',
+            detail: `ROUTED ${pkt.dstIp} → ${pkt.visitedHops[pkt.visitedHops.length - 1]}`,
+          });
+        } else {
+          const droppedPkt: RoutablePacket = { ...pkt, position: 50, status: 'dropped' };
+          dropped.push(droppedPkt);
+          this.addLog({
+            packetId: pkt.id, dstIp: pkt.dstIp, outcome: 'NO_ROUTE',
+            detail: `NO ROUTE — PACKET DROPPED (dst ${pkt.dstIp})`,
+          });
         }
         continue;
       }
@@ -173,52 +217,79 @@ export class DpdkRouterComponent implements OnDestroy {
       }
       processed++;
       const nextPosition = pkt.position + 15;
-      if (nextPosition >= 100) { routed.push({ ...pkt, position: 100, status: 'routed' }); continue; }
+      if (nextPosition >= 100) {
+        routed.push({ ...pkt, position: 100, status: 'routed' });
+        this.addLog({
+          packetId: pkt.id, dstIp: pkt.dstIp, outcome: 'ROUTED',
+          detail: `ROUTED ${pkt.dstIp} → ${match.nextHop} via ${match.interface}`,
+        });
+        continue;
+      }
       stillInFlight.push({ ...pkt, ttl: decremented.ttl, currentHop: match.nextHop,
         port: match.interface, status: 'in_flight', position: nextPosition,
         visitedHops: [...pkt.visitedHops, match.nextHop] });
     }
 
-    const { accepted, dropped } = RoutingEngine.processQueue(stillInFlight, QUEUE_CAPACITY);
-    processed += dropped.length;
-    const totalAttempted = routed.length + accepted.length + dropped.length;
-    if (totalAttempted > 0 && routed.length === totalAttempted && loopingCount === 0 && dropped.length === 0) {
-      this.achievements.unlock('all-packets-routed');
+    const { accepted, dropped: queueDropped } = RoutingEngine.processQueue(stillInFlight, QUEUE_CAPACITY);
+    processed += queueDropped.length;
+
+    if (routed.length > 0) this.routedCount.update((n) => n + routed.length);
+    if (dropped.length > 0) this.droppedCount.update((n) => n + dropped.length);
+    if (queueDropped.length > 0) {
+      for (const pkt of queueDropped) {
+        this.addLog({
+          packetId: pkt.id, dstIp: pkt.dstIp, outcome: 'DROPPED',
+          detail: `QUEUE FULL — TAIL DROP (dst ${pkt.dstIp})`,
+        });
+      }
+      this.droppedCount.update((n) => n + queueDropped.length);
     }
-    if (routed.length > 0) {
-      this.routedCount.update((n) => n + routed.length);
+
+    const totalAttempted = routed.length + accepted.length + dropped.length + queueDropped.length;
+    if (totalAttempted > 0 && routed.length === totalAttempted && loopingCount === 0 && dropped.length === 0 && queueDropped.length === 0 && !this.achievementUnlocked) {
+      this.achievementUnlocked = true;
+      this.achievements.unlock('all-packets-routed');
     }
     const cpu = Math.min(100, processed * PROCESSING_COST);
     this.cpuLoad.set(cpu);
     const packetsPerSec = (processed * 1000) / TICK_MS;
     const mpps = packetsPerSec / 1_000_000;
     this.packetRate.set(Math.round(packetsPerSec * mpps > 0 ? packetsPerSec : 0));
-    this.alarmActive.set(loopingCount > 0 || cpu >= 100);
+    this.alarmActive.set(loopingCount > 0 || cpu >= 100 || dropped.length > 0);
     if (loopingCount > 0 && accepted.length >= QUEUE_CAPACITY) {
-      this.clearInterval();
+      this.clearIntervals();
       this.simState.isSystemCrashed.set(true);
     }
     this.packets.set(accepted);
+    this.droppedPackets.set(dropped.slice(0, 4));
     this.syncToSimState(accepted, routed);
   }
 
   injectTraffic(): void {
-    this.clearInterval();
+    this.clearIntervals();
     this.routedCount.set(0);
-    for (const dst of ['10.10.5.20', '172.16.8.4', '192.168.50.10', '8.8.8.8']) this.injectPacket(dst);
-    this.intervalId = setInterval(() => this.processTick(), TICK_MS);
+    this.droppedCount.set(0);
+    this.routeLogs.set([]);
+    this.packets.set([]);
+    this.achievementUnlocked = false;
+    this.isStreaming.set(true);
+    this.injectBatch();
+    this.tickIntervalId = setInterval(() => this.processTick(), TICK_MS);
+    this.injectIntervalId = setInterval(() => this.injectBatch(), INJECT_INTERVAL_MS);
   }
   stopTraffic(): void {
-    this.clearInterval();
+    this.clearIntervals();
     this.packets.set([]);
     this.cpuLoad.set(0);
     this.packetRate.set(0);
     this.alarmActive.set(false);
     this.routedCount.set(0);
+    this.droppedCount.set(0);
     this.syncToSimState([], []);
   }
   resetRouter(): void {
     this.stopTraffic();
+    this.routeLogs.set([]);
     this.simState.routingRules.set(DEFAULT_RULES);
     this.simState.isSystemCrashed.set(false);
   }

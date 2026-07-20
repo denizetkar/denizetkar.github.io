@@ -2,9 +2,11 @@
   <div class="objective-banner">
     <span class="objective-text">
       <span class="obj-tag">OBJECTIVE</span>
-      Complete all 4 channel conversations. Scan for frequencies, tune in, and talk.
+      Scan for active frequencies, fine-tune to each one, and hold PTT to receive transmissions.
     </span>
-    <span class="objective-status">CHANNELS COMPLETE: {{ completedChannels().size }}/4</span>
+    <span class="objective-status">
+      CHANNELS COMPLETE: {{ completedChannels().size }}/4 / SIGNAL: {{ signalStrength().toFixed(2) }}
+    </span>
   </div>
 
   <!-- Walkie-Talkie Antenna and Knobs -->
@@ -16,12 +18,12 @@
 
   <div class="radio-body glow-border">
     <!-- LCD Display Panel -->
-    <div class="lcd-screen glass-panel">
+    <div class="lcd-screen glass-panel" [class.static-mode]="staticActive() && signalStrength() < 0.5" [class.garbled-mode]="isGarbled()" [class.clear-mode]="isClear()">
       @if (isPowered()) {
         <div class="battery-indicator">🔋 [III]</div>
         <div class="frequency-row">
           <span class="freq">{{ currentTune().toFixed(3) }} GHz</span>
-          <span class="sig-bars">📶 {{ signalStrength().toFixed(2) }}</span>
+          <span class="sig-bars">📶 {{ signalBars() }}</span>
         </div>
         <div class="status-badge" [ngClass]="simState.radioState().radioStatus">
           {{ simState.radioState().radioStatus | uppercase }}
@@ -29,6 +31,9 @@
         <div class="screen-text" [class.static-lines]="staticActive()">
           {{ simState.receivedTransmission() }}
         </div>
+        @if (pttFeedback().length > 0) {
+          <div class="ptt-feedback">{{ pttFeedback() }}</div>
+        }
       } @else {
         <div class="screen-dead"></div>
       }
@@ -50,8 +55,8 @@
         }
       </div>
 
-      <button class="btn-scan glow-border" (click)="scanFrequencies()">
-        🔍 SCAN FREQ
+      <button class="btn-scan glow-border" (click)="scanFrequencies()" [class.scanning]="isScanning()">
+        {{ isScanning() ? '⌛ SCANNING...' : '🔍 SCAN FREQ' }}
       </button>
 
       <!-- Fine-tune slider -->
@@ -66,10 +71,29 @@
           (input)="setCurrentTune(parseFloatValue($any($event.target).value))"
         />
       </label>
-      <div class="signal-meter">
-        SIGNAL: {{ signalStrength().toFixed(2) }} {{ signalStrength() > 0.8 ? '✓ CLEAR' : '✗ NOISY' }}
+      <div class="signal-meter" [class.clear]="isClear()" [class.garbled]="isGarbled()">
+        SIGNAL: {{ signalStrength().toFixed(2) }} {{ isClear() ? '✓ CLEAR' : isGarbled() ? '◐ GARBLED' : '✗ NOISY' }}
       </div>
     </div>
+
+    <!-- Scan results with signal bars -->
+    @if (scanResults().length > 0) {
+      <div class="scan-results">
+        <div class="scan-results-title">DISCOVERED FREQUENCIES</div>
+        <div class="scan-list">
+          @for (ch of scanResults(); track ch.id) {
+            <div class="scan-row" [class.active]="simState.connectedFrequency() === ch.id" [class.completed]="completedChannels().has(ch.id)" (click)="tuneChannel(ch.id)">
+              <span class="scan-freq">{{ ch.freqGHz.toFixed(3) }} GHz</span>
+              <span class="scan-bars">{{ '▓'.repeat(ch.bars) }}{{ '░'.repeat(5 - ch.bars) }}</span>
+              <span class="scan-tag">
+                @if (completedChannels().has(ch.id)) { ✓ }
+                @else if (simState.connectedFrequency() === ch.id) { ◉ }
+              </span>
+            </div>
+          }
+        </div>
+      </div>
+    }
 
     <!-- Speaker Slits -->
     <div class="speaker-grill">
@@ -86,7 +110,7 @@
     <button
       class="ptt-btn"
       [class.pressed]="isPttHeld()"
-      [disabled]="!isPowered() || !simState.connectedFrequency()"
+      [disabled]="!isPowered()"
       (mousedown)="startPtt()"
       (mouseup)="stopPtt()"
       (mouseleave)="stopPtt()"
@@ -120,14 +144,11 @@
           </div>
         </div>
       }
-      @if (!currentDialogueNode()) {
-        <button class="btn-scan glow-border" (click)="startDialogue()">START TRANSMISSION</button>
-      }
     </div>
-  } @else if (isPowered() && simState.connectedFrequency()) {
+  } @else if (isPowered() && simState.connectedFrequency() && isClear()) {
     <div class="discovery-panel glass-panel glow-border">
-      <h5>{{ simState.connectedFrequency() }} — STANDBY</h5>
-      <button class="btn-scan glow-border" (click)="startDialogue()">START TRANSMISSION</button>
+      <h5>{{ simState.connectedFrequency() }} — SIGNAL LOCKED</h5>
+      <button class="btn-scan glow-border" (click)="startDialogue()">HOLD PTT TO RECEIVE</button>
     </div>
   }
 </div>

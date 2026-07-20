@@ -45,6 +45,39 @@
   font-weight: 700;
   letter-spacing: 0.05em;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-routed {
+  color: #22c55e;
+  text-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+}
+
+.stat-dropped {
+  color: var(--error);
+  text-shadow: 0 0 6px var(--error-glow);
+}
+
+.stat-divider {
+  color: var(--text-secondary);
+  opacity: 0.5;
+}
+
+.stat-stream {
+  color: var(--text-secondary);
+  padding: 1px 6px;
+  border: 1px solid var(--border-glass);
+  border-radius: 3px;
+  font-size: 0.6rem;
+
+  &.active {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: rgba(20, 184, 166, 0.1);
+    animation: blinker 1s infinite alternate;
+  }
 }
 
 .router-row {
@@ -87,6 +120,32 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
+}
+
+.routed-box {
+  border-color: rgba(34, 197, 94, 0.4);
+  background: rgba(34, 197, 94, 0.05);
+}
+
+.dropped-box {
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.05);
+
+  &.alarm {
+    border-color: var(--error);
+    background: rgba(239, 68, 68, 0.15);
+    animation: alert-flash 0.8s infinite alternate;
+  }
+}
+
+.routed-glow {
+  color: #22c55e;
+  text-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+}
+
+.dropped-glow {
+  color: var(--error);
+  text-shadow: 0 0 8px var(--error-glow);
 }
 
 .telemetry-box {
@@ -153,6 +212,13 @@
   .btn-traffic {
     background: var(--accent);
     color: #000;
+
+    &.streaming {
+      background: rgba(20, 184, 166, 0.2);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      animation: blinker 1s infinite alternate;
+    }
   }
 
   .btn-stop {
@@ -444,10 +510,93 @@
     animation: flow-to-ports 0.6s linear forwards;
   }
 
+  &.dropped-exit {
+    background: var(--error);
+    box-shadow: 0 0 12px var(--error-glow);
+    animation: drop-flash 1.2s ease-out forwards;
+
+    .pkt-id {
+      color: #fff;
+    }
+  }
+
   &.looping {
     background: var(--error);
     box-shadow: 0 0 8px var(--error-glow);
     animation: flow-in-loop 1.2s infinite linear;
+  }
+}
+
+@keyframes drop-flash {
+  0% {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  30% {
+    transform: translate(-50%, -50%) scale(1.8);
+    opacity: 1;
+  }
+  100% {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(0.3);
+    opacity: 0;
+  }
+}
+
+.route-log-panel {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  right: 16px;
+  max-height: 120px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--border-glass);
+  border-radius: 6px;
+  padding: 6px;
+  z-index: 5;
+
+  h5 {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+    letter-spacing: 0.1em;
+  }
+
+  .log-list {
+    overflow-y: auto;
+    scrollbar-width: thin;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .log-line {
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    line-height: 1.3;
+    color: var(--text-primary);
+    display: flex;
+    gap: 6px;
+
+    .log-time {
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .log-detail {
+      word-break: break-all;
+    }
+
+    &.routed .log-detail { color: #22c55e; }
+    &.dropped .log-detail { color: #fbbf24; }
+    &.no_route .log-detail { color: var(--error); }
+    &.empty { color: var(--text-muted); font-style: italic; }
   }
 }
 

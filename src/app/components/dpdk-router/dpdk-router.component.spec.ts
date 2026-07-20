@@ -85,13 +85,74 @@ describe('DpdkRouterComponent', () => {
     component.addRule();
     expect(simState.routingRules().some((r) => r.destination === '10.20.0.0/24')).toBe(true);
   });
-  it('processTick routes a matching packet and unlocks all-packets-routed on win', () => {
+  it('starts with only 2 default rules (no default route, no 10.10.0.0/16)', () => {
+    // Constructor seeds DEFAULT_RULES when routingRules is empty.
+    expect(component.rules()).toHaveLength(2);
+    expect(component.rules().some((r) => r.destination === '172.16.0.0/12')).toBe(true);
+    expect(component.rules().some((r) => r.destination === '192.168.0.0/16')).toBe(true);
+    expect(component.rules().some((r) => r.destination === '0.0.0.0/0')).toBe(false);
+    expect(component.rules().some((r) => r.destination === '10.10.0.0/16')).toBe(false);
+  });
+  it('processTick DROPS a packet whose destination matches no rule', () => {
+    simState.routingRules.set([RULE('10.10.0.0/16', '192.168.1.1', 'Port 1 (WAN)')]);
+    flushEffects();
+    component.injectPacket('8.8.8.8'); // no match → dropped
+    component.processTick();
+    expect(component.droppedCount()).toBe(1);
+    expect(component.routedCount()).toBe(0);
+    expect(component.routeLogs().some((l) => l.outcome === 'NO_ROUTE')).toBe(true);
+  });
+  it('processTick ROUTES a packet whose destination matches a rule', () => {
     simState.routingRules.set([RULE('10.10.0.0/16', '192.168.1.1', 'Port 1 (WAN)')]);
     flushEffects();
     component.injectPacket('10.10.0.5');
-    expect(component.packets()).toHaveLength(1);
-    component.processTick();
     for (let i = 0; i < 10 && component.packets().length > 0; i++) component.processTick();
+    expect(component.routedCount()).toBe(1);
+    expect(component.droppedCount()).toBe(0);
+  });
+  it('injectTraffic starts continuous streaming and injects 4 packets', () => {
+    simState.routingRules.set([RULE('10.10.0.0/16', '192.168.1.1', 'Port 1 (WAN)')]);
+    flushEffects();
+    component.injectTraffic();
+    expect(component.isStreaming()).toBe(true);
+    expect(component.packets().length).toBe(4);
+    component.stopTraffic();
+    expect(component.isStreaming()).toBe(false);
+  });
+  it('injectTraffic injects 2 routed + 2 dropped packets with default rules (visible failures)', () => {
+    // DEFAULT_RULES only cover 172.16/12 and 192.168/16.
+    // Packets: 10.10.5.20 (no match→drop), 172.16.8.4 (match→route),
+    //          192.168.50.10 (match→route), 8.8.8.8 (no match→drop).
+    flushEffects();
+    component.injectTraffic();
+    for (let i = 0; i < 20; i++) component.processTick();
+    expect(component.routedCount()).toBe(2);
+    expect(component.droppedCount()).toBe(2);
+    expect(component.routeLogs().filter((l) => l.outcome === 'ROUTED')).toHaveLength(2);
+    expect(component.routeLogs().filter((l) => l.outcome === 'NO_ROUTE')).toHaveLength(2);
+    component.stopTraffic();
+  });
+  it('adding 10.10.0.0/16 and 0.0.0.0/0 rules routes all 4 packets and unlocks the achievement', () => {
+    flushEffects();
+    component.injectTraffic();
+    // Confirm initial drops.
+    for (let i = 0; i < 15; i++) component.processTick();
+    expect(component.droppedCount()).toBeGreaterThan(0);
+    // Add the two missing rules.
+    component.newCidr.set('10.10.0.0/16');
+    component.newGateway.set('192.168.1.1');
+    component.newPort.set('Port 1 (WAN)');
+    component.addRule();
+    component.newCidr.set('0.0.0.0/0');
+    component.newGateway.set('192.168.1.1');
+    component.newPort.set('Port 1 (WAN)');
+    component.addRule();
+    // Stop and restart streaming to reset counters.
+    component.stopTraffic();
+    component.injectTraffic();
+    for (let i = 0; i < 20 && component.packets().length > 0; i++) component.processTick();
+    expect(component.droppedCount()).toBe(0);
+    expect(component.routedCount()).toBeGreaterThan(0);
     expect(achievements.isUnlocked('all-packets-routed')).toBe(true);
   });
   it('crashes the system when a routing loop drives CPU to 100%', () => {
