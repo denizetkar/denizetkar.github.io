@@ -192,3 +192,10 @@ dist
 .ionide
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,angular,node
+
+# Local planning workspace — never commit
+.omo/
+
+# TNG profile PDF — local reference only, confidential
+TNG_Profil_Deniz_Etkar_en_DE.pdf
+*.pdf
