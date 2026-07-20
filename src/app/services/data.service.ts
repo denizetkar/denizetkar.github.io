@@ -20,6 +20,27 @@ export interface SkillGroup {
   skills: string[];
 }
 
+export interface Certification {
+  name: string;
+  issuer: string;
+  year: string;
+}
+
+export interface Language {
+  name: string;
+  proficiency: string;
+}
+
+export interface EducationEntry {
+  institution: string;
+  degree: string;
+  field: string;
+  startYear: number;
+  endYear: number;
+  grade?: string;
+  thesis?: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -27,24 +48,25 @@ export class DataService {
   public readonly isCrashed = signal(false);
   public readonly isInfected = signal(false);
   public readonly name = signal('Deniz Etkar');
-  public readonly title = signal('Software Engineer & IT Consultant');
+  public readonly title = signal('Senior Consultant');
+  public readonly currentRole = signal(
+    'Senior Consultant at TNG Technology Consulting GmbH (since Sep 2024)',
+  );
   public readonly company = signal('TNG Technology Consulting GmbH');
   public readonly location = signal('Munich, Germany');
   public readonly email = signal('25102252+denizetkar@users.noreply.github.com');
   public readonly githubUrl = signal('https://github.com/denizetkar');
-  public readonly linkedinUrl = signal('https://linkedin.com/in/deniz-etkar-placeholder');
+  public readonly linkedinUrl = signal('https://linkedin.com/in/deniz-etkar');
 
   public readonly bio = signal(
-    'I am a passionate software engineer and consultant based in Munich. ' +
-    'I specialize in low-level networking, high-performance C++, mobile and frontend development. ' +
-    'I have a strong love for building highly optimized systems, exploring modern browser standards, ' +
-    'and creating reactive single-page applications using Angular.'
+    'I am a Senior Consultant at TNG Technology Consulting in Munich, working fullstack across Python, Angular, TypeScript, and Kotlin/Java. ' +
+    'My academic and personal projects span low-level networking (DPDK), embedded flight software, and decentralized protocols — the playground for the interactive widgets on this site.',
   );
 
   public readonly skills = signal<SkillGroup[]>([
     {
       category: 'Languages',
-      skills: ['C++', 'TypeScript', 'JavaScript', 'Python', 'C', 'HTML5/CSS3'],
+      skills: ['C++', 'TypeScript', 'JavaScript', 'Python', 'C', 'Go', 'Kotlin', 'Java', 'HTML5/CSS3'],
     },
     {
       category: 'Frontend & Frameworks',
@@ -60,17 +82,60 @@ export class DataService {
     },
   ]);
 
+  public readonly certifications = signal<Certification[]>([
+    {
+      name: 'iSAQB Certified Professional for Software Architecture - Foundation Level (CPSA-F)',
+      issuer: 'iSAQB',
+      year: '2026',
+    },
+  ]);
+
+  public readonly languages = signal<Language[]>([
+    { name: 'Turkish', proficiency: 'Native' },
+    { name: 'English', proficiency: 'Fluent' },
+    { name: 'German', proficiency: 'B1' },
+  ]);
+
+  public readonly education = signal<EducationEntry[]>([
+    {
+      institution: 'Technical University of Munich',
+      degree: 'M.Sc.',
+      field: 'Informatics',
+      startYear: 2020,
+      endYear: 2022,
+      grade: '1.3',
+      thesis: 'Domain Adaptive Online Defect Classification for Wire Arc Additive Manufacturing',
+    },
+    {
+      institution: 'Boğaziçi University',
+      degree: 'B.Sc.',
+      field: 'Industrial Engineering',
+      startYear: 2013,
+      endYear: 2019,
+      grade: '3.68/4.00',
+    },
+    {
+      institution: 'Boğaziçi University',
+      degree: 'B.Sc.',
+      field: 'Computer Engineering',
+      startYear: 2015,
+      endYear: 2019,
+      grade: '3.68/4.00',
+    },
+  ]);
+
   public readonly projects = signal<Project[]>([
     {
       name: 'gossip-protocol',
       description: 'A decentralized gossip protocol agent utilizing Proof-of-Work (PoW) and trusted identity signatures.',
       url: 'https://github.com/denizetkar/gossip-protocol',
-      tech: ['C++', 'Cryptography', 'Networking'],
+      tech: ['Go', 'Cryptography', 'Networking'],
       details: [
         'Implemented PoW-based anti-spam authentication for nodes.',
         'Uses local trusted signatures to verify node authenticity.',
-        'Simulates peer discovery, epidemic spreading, and self-healing topologies.'
-      ]
+        'Simulates peer discovery, epidemic spreading, and self-healing topologies.',
+        'University distributed-systems project (Sep 2020), co-authored with dangerfish96. Written in Go.',
+      ],
     },
     {
       name: 'dpdk-router',
@@ -80,8 +145,9 @@ export class DataService {
       details: [
         'Utilizes Data Plane Development Kit (DPDK) for high-throughput, low-latency processing.',
         'Handles ARP requests, routes IPv4 packets, and manages static/dynamic routing tables.',
-        'Designed to run on bare-metal systems bypassing Linux kernel networking overhead.'
-      ]
+        'Designed to run on bare-metal systems bypassing Linux kernel networking overhead.',
+        'Course project built on the TUM ININET framework (by gallenmu/emmericp); custom routing logic and DPDK integration are my own contributions (Jan 2021).',
+      ],
     },
     {
       name: 'walkie-talkie-app',
@@ -91,8 +157,8 @@ export class DataService {
       details: [
         'Allows direct peer-to-peer walkie-talkie functionality without internet or cellular coverage.',
         'Uses BLE advertising and scanning for discovery and payload transfer.',
-        'Features raw audio streaming and custom compression to fit BLE packet size constraints.'
-      ]
+        'Audio is Opus-encoded at 48 kHz via a Rust audio engine (Oboe/AAudio) with a jitter buffer for mesh stability.',
+      ],
     },
     {
       name: 'OptimizationTools',
@@ -102,8 +168,8 @@ export class DataService {
       details: [
         'Solves complex scheduling and bin-packing problems.',
         'Implements customized genetic algorithms, simulated annealing, and branch-and-bound strategies.',
-        'Highly optimized C++ templates for maximum execution speed.'
-      ]
+        'C++ library of optimization solvers (genetic algorithm, simplex, PSO) developed during a 2017 industry internship at SC3 Electronics, Istanbul.',
+      ],
     },
     {
       name: 'TeknofestFlightSoftware',
@@ -113,41 +179,65 @@ export class DataService {
       details: [
         'Runs real-time sensor fusion algorithms (IMU, Barometer, GPS).',
         'Implements apogee detection logic and double-stage parachute deployment triggers.',
-        'Includes flash-memory logging for post-flight telemetry analysis.'
-      ]
-    }
+        'Archived (May 2020). Runs on STM32F103C8T6 with MPU9250 IMU, NEO-6M GPS, and 4× MG995 fin servos. Implements Madgwick AHRS sensor fusion and quaternion PID fin control.',
+      ],
+    },
   ]);
 
   public readonly timeline = signal<Milestone[]>([
     {
-      year: '2015',
+      year: '2013',
       title: 'Boğaziçi University Admission',
-      description: 'Started Industrial Engineering degree at Boğaziçi University, Istanbul, focusing on operations research and optimization.',
-      altitude: 1500
+      description: 'Started B.Sc. in Industrial Engineering at Boğaziçi University, Istanbul.',
+      altitude: 1000,
+    },
+    {
+      year: '2015',
+      title: 'Second Major & Siemens Internship',
+      description: 'Added Computer Engineering as a second B.Sc. major at Boğaziçi; completed a Siemens internship.',
+      altitude: 2000,
+    },
+    {
+      year: '2017',
+      title: 'SC3 Electronics Internship',
+      description: 'Industry internship at SC3 Electronics, Istanbul — developed the C++ OptimizationTools library (genetic algorithm, simplex, PSO).',
+      altitude: 3000,
     },
     {
       year: '2018',
-      title: 'Software Engineering Project Co-Author',
-      description: 'Contributed to memory-sharing apps and IoT architectures for construction industry research.',
-      altitude: 3500
+      title: 'ING & Second Siemens Internship',
+      description: 'Internships at ING Bank and a second engagement at Siemens, plus TUM tutoring work alongside studies.',
+      altitude: 4000,
     },
     {
       year: '2019',
-      title: 'Graduated from Boğaziçi University',
-      description: 'Received B.S. in Industrial Engineering with research focus in optimization tools.',
-      altitude: 5000
+      title: 'Boğaziçi Double B.Sc. Graduation',
+      description: 'Graduated from Boğaziçi University with B.Sc. degrees in both Industrial Engineering and Computer Engineering (GPA 3.68/4.00).',
+      altitude: 5000,
+    },
+    {
+      year: '2020',
+      title: 'TUM M.Sc. Informatics Begins',
+      description: 'Began M.Sc. Informatics at the Technical University of Munich; co-authored the Go gossip-protocol project.',
+      altitude: 6500,
     },
     {
       year: '2021',
-      title: 'Joined TNG Technology Consulting',
-      description: 'Began work as an IT Consultant / Software Engineer at TNG in Munich, Germany.',
-      altitude: 7500
+      title: 'DPDK Router & TUM Tutoring',
+      description: 'Built the DPDK router on the TUM ININET framework; continued tutoring at TUM.',
+      altitude: 8000,
     },
     {
-      year: '2026',
-      title: 'Exploring Future Frontiers',
-      description: 'Continually designing low-level systems, high-speed routing engines, and modular reactive frontends.',
-      altitude: 10000
-    }
+      year: '2022',
+      title: 'TUM M.Sc. Informatics',
+      description: 'Received M.Sc. in Informatics from TUM (grade 1.3); thesis on Domain Adaptive Online Defect Classification for Wire Arc Additive Manufacturing.',
+      altitude: 9000,
+    },
+    {
+      year: '2024',
+      title: 'Senior Consultant at TNG',
+      description: 'Promoted to Senior Consultant at TNG Technology Consulting GmbH in Munich (since Sep 2024), after joining as Software Consultant in Oct 2022.',
+      altitude: 10000,
+    },
   ]);
 }

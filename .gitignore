@@ -199,3 +199,6 @@ dist
 # TNG profile PDF — local reference only, confidential
 TNG_Profil_Deniz_Etkar_en_DE.pdf
 *.pdf
+
+# pnpm store cache — local dependency cache, never commit
+.pnpm-store/
