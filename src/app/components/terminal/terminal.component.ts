@@ -191,7 +191,7 @@ function isNumeric(s: string): boolean {
 
 export class VirtualFileSystem {
   private root: VfsNode;
-  private cwdPath = HOME;
+  private readonly cwdPath = signal(HOME);
   private oldCwdPath = HOME;
   private readonly achievements: AchievementService;
   private readonly dataService: DataService;
@@ -270,7 +270,7 @@ export class VirtualFileSystem {
   }
 
   rebuild(): void { this.root = this.buildTree(); }
-  cwd(): string { return this.cwdPath; }
+  cwd(): string { return this.cwdPath(); }
   oldCwd(): string { return this.oldCwdPath; }
 
   private expandUser(path: string): string {
@@ -294,7 +294,7 @@ export class VirtualFileSystem {
   }
 
   private normalize(path: string): string {
-    if (!path.startsWith('/')) path = `${this.cwdPath}/${path}`;
+    if (!path.startsWith('/')) path = `${this.cwdPath()}/${path}`;
     const parts: string[] = [];
     for (const p of path.split('/')) {
       if (p === '' || p === '.') continue;
@@ -309,7 +309,7 @@ export class VirtualFileSystem {
   }
 
   ls(path?: string): string[] {
-    const target = this.resolve(path ?? this.cwdPath);
+    const target = this.resolve(path ?? this.cwdPath());
     if (!target || target.type !== 'dir' || !target.children) return [];
     if (path !== undefined && this.isSecretPath(path) && !this.achievements.isUnlocked('apogee-reached')) {
       return [];
@@ -318,7 +318,7 @@ export class VirtualFileSystem {
   }
 
   lsNodes(path?: string): VfsNode[] {
-    const target = this.resolve(path ?? this.cwdPath);
+    const target = this.resolve(path ?? this.cwdPath());
     if (!target || target.type !== 'dir' || !target.children) return [];
     if (path !== undefined && this.isSecretPath(path) && !this.achievements.isUnlocked('apogee-reached')) {
       return [];
@@ -332,16 +332,16 @@ export class VirtualFileSystem {
       const target = this.resolve(prev);
       if (!target) return { ok: false, error: `cd: no such file or directory: ${prev}` };
       if (target.type !== 'dir') return { ok: false, error: `cd: not a directory: ${prev}` };
-      this.oldCwdPath = this.cwdPath;
-      this.cwdPath = prev;
+      this.oldCwdPath = this.cwdPath();
+      this.cwdPath.set(prev);
       return { ok: true };
     }
     const expanded = this.expandUser(path);
     const target = this.resolve(expanded);
     if (!target) return { ok: false, error: `cd: no such file or directory: ${path}` };
     if (target.type !== 'dir') return { ok: false, error: `cd: not a directory: ${path}` };
-    this.oldCwdPath = this.cwdPath;
-    this.cwdPath = this.normalize(expanded);
+    this.oldCwdPath = this.cwdPath();
+    this.cwdPath.set(this.normalize(expanded));
     return { ok: true };
   }
 
@@ -384,7 +384,7 @@ export class VirtualFileSystem {
   }
 
   tree(path?: string): string {
-    const root = this.resolve(path ?? this.cwdPath);
+    const root = this.resolve(path ?? this.cwdPath());
     if (!root) return '';
     const lines: string[] = [];
     this.renderTree(root, '', lines);
@@ -403,9 +403,10 @@ export class VirtualFileSystem {
 
   find(name: string): string[] {
     const results: string[] = [];
-    const start = this.resolve(this.cwdPath);
+    const cwd = this.cwdPath();
+    const start = this.resolve(cwd);
     if (!start) return results;
-    this.walkFind(start, this.cwdPath, name, results);
+    this.walkFind(start, cwd, name, results);
     return results;
   }
 
